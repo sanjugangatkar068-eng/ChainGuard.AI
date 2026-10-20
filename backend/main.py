@@ -27,6 +27,7 @@ from signals import fetch_signals
 
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
+APP_NAME = (os.getenv("APP_NAME", "") or "").strip() or "ChainGuard AI"
 
 
 async def _autonomous_loop(interval):
@@ -53,7 +54,7 @@ async def lifespan(_app):
 
 
 app = FastAPI(
-    title="ChainGuard AI",
+    title=APP_NAME,
     description="Agentic AI for resilient supply chains",
     version="1.3.0",
     lifespan=lifespan,
@@ -82,7 +83,7 @@ db.init_db()
 @app.get("/")
 def home():
     return {
-        "app": "ChainGuard AI",
+        "app": APP_NAME,
         "status": "online",
         "docs": "/docs",
         "dashboard": "/dashboard",
