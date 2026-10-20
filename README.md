@@ -77,6 +77,21 @@ never hardcoded.
 Google News RSS queries on supply-chain disruptions). If every feed is unreachable it
 falls back to a built-in offline sample, so demos never come back empty.
 
+## VS Code
+
+Open the repository folder in VS Code and you get, out of the box:
+
+- **Run & Debug** → *ChainGuard API (uvicorn)* launches the server on port 8000 with
+  the debugger attached; *Pytest (current file)* debugs a single test.
+- **Terminal → Run Task** → install dependencies, run the server, run tests, or seed
+  demo data.
+- **Testing** sidebar discovers the pytest suite automatically.
+- Recommended extensions (Python, Pylance, debugpy, Ruff) are suggested on open.
+
+A **Dev Container** is included (`.devcontainer/`): open the folder with
+*Dev Containers: Reopen in Container* (or a GitHub Codespace) to get Python 3.12 with
+dependencies installed and port 8000 forwarded.
+
 ## Demo data
 
 Populate the database with sample disruptions, analyses and approvals so a demo
@@ -159,9 +174,17 @@ curl -X POST http://127.0.0.1:8000/api/approvals/1/decision \
 
 ```
 .
+├── .devcontainer           # VS Code Dev Container / Codespaces
+│   └── devcontainer.json
 ├── .dockerignore
+├── .editorconfig
 ├── .gitignore
 ├── .github/workflows/ci.yml
+├── .vscode                 # shared debug, task and extension config
+│   ├── extensions.json
+│   ├── launch.json
+│   ├── settings.json
+│   └── tasks.json
 ├── LICENSE
 ├── README.md
 ├── docs

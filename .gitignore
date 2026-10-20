@@ -26,4 +26,4 @@ ENV/
 .DS_Store
 Thumbs.db
 .idea/
-.vscode/
+# NOTE: .vscode/ is intentionally tracked so the team shares debug/task config.
