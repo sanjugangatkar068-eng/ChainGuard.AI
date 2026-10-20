@@ -101,11 +101,11 @@ def get_record(table, record_id):
         return dict(row) if row else None
 
 
-def list_records(table, limit=100):
+def list_records(table, limit=100, offset=0):
     with get_conn() as conn:
         rows = conn.execute(
-            f"SELECT * FROM {table} ORDER BY id DESC LIMIT ?",
-            (limit,),
+            f"SELECT * FROM {table} ORDER BY id DESC LIMIT ? OFFSET ?",
+            (limit, offset),
         ).fetchall()
         return [dict(row) for row in rows]
 

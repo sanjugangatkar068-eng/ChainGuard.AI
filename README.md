@@ -6,7 +6,7 @@ ChainGuard AI is a FastAPI backend that models the "Resilient Supply Chains" hac
 theme as a pipeline of collaborating agents. It senses a disruption, plans response
 scenarios, recommends logistics and inventory actions, flags compliance concerns, and
 routes high-stakes decisions to a human for approval — logging everything to an
-audit trail.
+audit trail. A zero-build demo dashboard ships with it.
 
 > All outputs are **recommendations only**. The system never executes an external
 > action (no bookings, no orders); a human decision is required for high-risk cases.
@@ -15,11 +15,12 @@ audit trail.
 
 | Agent | Role |
 | --- | --- |
-| Disruption Sensing Agent | Scores a disruption's severity into a risk level. |
-| Scenario Planning Agent | Compares wait / reroute / expedite options on cost and delay, within budget. |
-| Rerouting & Logistics Agent | Turns the chosen scenario into a concrete recommended action. |
-| Inventory Rebalancing Agent | Recomputes reorder point and replenishment needs. |
-| Compliance & Audit Agent | Flags high-risk cases and budget breaches; decides if human approval is required. |
+| 1. Disruption Sensing Agent | Scores a disruption's severity into a risk level. |
+| 2. Scenario Planning Agent | Compares wait / reroute / expedite options on cost and delay, within budget. |
+| 3. Rerouting & Logistics Agent | Turns the chosen scenario into a concrete recommended action. |
+| 4. Inventory Rebalancing Agent | Recomputes reorder point and replenishment needs. |
+| 5. Compliance & Audit Agent | Flags high-risk cases and budget breaches; decides if human approval is required. |
+| Human-in-the-loop | A reviewer approves or rejects high-risk recommendations. |
 
 ## Requirements
 
@@ -36,8 +37,8 @@ python -m venv .venv
 # macOS / Linux:
 source .venv/bin/activate
 
-pip install -r requirements.txt
-cp .env.example .env      # then edit if needed
+pip install -r requirements-dev.txt   # includes runtime + test deps
+cp .env.example .env                  # then edit if needed
 ```
 
 ## Run
@@ -47,7 +48,24 @@ cd backend
 uvicorn main:app --reload --port 8000
 ```
 
-Open http://127.0.0.1:8000/docs for the interactive API docs.
+- Interactive API docs: http://127.0.0.1:8000/docs
+- Demo dashboard: http://127.0.0.1:8000/dashboard
+
+## Tests
+
+```bash
+cd backend
+pytest -q
+```
+
+CI runs the same suite on every push and pull request (see `.github/workflows/ci.yml`).
+
+## Docker
+
+```bash
+docker build -f backend/Dockerfile -t chainguard-ai .
+docker run -p 8000:8000 chainguard-ai
+```
 
 ## API endpoints
 
@@ -57,13 +75,16 @@ Open http://127.0.0.1:8000/docs for the interactive API docs.
 | GET | `/health` | Health check. |
 | GET | `/api/dashboard` | Counts plus recent disruptions and approvals. |
 | POST | `/api/disruptions` | Create a disruption record. |
-| GET | `/api/disruptions` | List disruptions. |
+| GET | `/api/disruptions` | List disruptions (`limit`, `offset`). |
 | POST | `/api/analyze` | Run the agent pipeline for a scenario. |
 | GET | `/api/analyses/{id}` | Fetch a stored analysis. |
-| GET | `/api/approvals` | List approval requests. |
+| GET | `/api/approvals` | List approval requests (`limit`, `offset`). |
 | POST | `/api/approvals/{id}/decision` | Approve or reject a request. |
-| GET | `/api/audit` | Read the audit log. |
+| GET | `/api/audit` | Read the audit log (`limit`, `offset`). |
 | POST | `/api/inventory/rebalance` | Inventory recommendation only. |
+
+List endpoints accept `limit` (1–500, default 50) and `offset` (default 0) and return
+`{ items, total, limit, offset }`.
 
 ## Quick example
 
@@ -89,14 +110,21 @@ curl -X POST http://127.0.0.1:8000/api/approvals/1/decision \
 
 ```
 .
+├── .dockerignore
 ├── .gitignore
+├── .github/workflows/ci.yml
 ├── README.md
 └── backend
-    ├── main.py           # FastAPI app and routes
-    ├── agents.py         # agent pipeline
-    ├── models.py         # Pydantic request models
-    ├── database.py       # SQLite helpers
+    ├── main.py             # FastAPI app and routes
+    ├── agents.py           # agent pipeline
+    ├── models.py           # Pydantic request models
+    ├── database.py         # SQLite helpers
+    ├── conftest.py         # test fixtures
+    ├── tests/test_api.py   # test suite
+    ├── static/index.html   # demo dashboard
     ├── requirements.txt
+    ├── requirements-dev.txt
+    ├── Dockerfile
     └── .env.example
 ```
 

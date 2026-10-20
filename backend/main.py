@@ -1,7 +1,9 @@
 import json
+from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 import database as db
 from agents import run_supply_chain_agents
@@ -11,10 +13,13 @@ from models import (
     ApprovalDecision
 )
 
+BASE_DIR = Path(__file__).resolve().parent
+STATIC_DIR = BASE_DIR / "static"
+
 app = FastAPI(
     title="ChainGuard AI",
     description="Agentic AI for resilient supply chains",
-    version="1.0.0"
+    version="1.1.0"
 )
 
 app.add_middleware(
@@ -35,7 +40,8 @@ def home():
     return {
         "app": "ChainGuard AI",
         "status": "online",
-        "docs": "/docs"
+        "docs": "/docs",
+        "dashboard": "/dashboard"
     }
 
 
@@ -81,8 +87,11 @@ def create_disruption(request: DisruptionRequest):
 
 
 @app.get("/api/disruptions")
-def list_disruptions():
-    records = db.list_records("disruptions")
+def list_disruptions(
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0)
+):
+    records = db.list_records("disruptions", limit, offset)
 
     return {
         "items": [
@@ -92,7 +101,10 @@ def list_disruptions():
                 **json.loads(record["payload"])
             }
             for record in records
-        ]
+        ],
+        "total": db.count_records("disruptions"),
+        "limit": limit,
+        "offset": offset
     }
 
 
@@ -178,8 +190,16 @@ def get_analysis(analysis_id: int):
 
 
 @app.get("/api/approvals")
-def list_approvals():
-    return {"items": db.list_records("approvals")}
+def list_approvals(
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0)
+):
+    return {
+        "items": db.list_records("approvals", limit, offset),
+        "total": db.count_records("approvals"),
+        "limit": limit,
+        "offset": offset
+    }
 
 
 @app.post("/api/approvals/{approval_id}/decision")
@@ -238,13 +258,21 @@ def decide_approval(
 
 
 @app.get("/api/audit")
-def audit_logs():
-    records = db.list_records("audit_logs")
+def audit_logs(
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0)
+):
+    records = db.list_records("audit_logs", limit, offset)
 
     for record in records:
         record["details"] = json.loads(record["details"])
 
-    return {"items": records}
+    return {
+        "items": records,
+        "total": db.count_records("audit_logs"),
+        "limit": limit,
+        "offset": offset
+    }
 
 
 @app.post("/api/inventory/rebalance")
@@ -265,3 +293,12 @@ def rebalance_inventory(request: ScenarioRequest):
     )
 
     return result
+
+
+# Serve the demo dashboard (static, no build step) at /dashboard.
+if STATIC_DIR.is_dir():
+    app.mount(
+        "/dashboard",
+        StaticFiles(directory=STATIC_DIR, html=True),
+        name="dashboard"
+    )

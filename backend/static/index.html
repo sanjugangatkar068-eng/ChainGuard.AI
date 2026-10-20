@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ChainGuard AI — Dashboard</title>
+<style>
+  :root {
+    --bg: #0f172a; --panel: #1e293b; --panel2: #273449;
+    --ink: #e2e8f0; --muted: #94a3b8; --line: #334155;
+    --brand: #38bdf8; --ok: #34d399; --warn: #fbbf24; --bad: #f87171;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font: 15px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    background: var(--bg); color: var(--ink);
+  }
+  header {
+    padding: 20px 28px; border-bottom: 1px solid var(--line);
+    display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;
+  }
+  header h1 { margin: 0; font-size: 20px; letter-spacing: .3px; }
+  header .tag { color: var(--muted); font-size: 13px; }
+  main { padding: 22px 28px; max-width: 1180px; margin: 0 auto; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  @media (max-width: 880px) { .grid { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 12px; padding: 16px 18px; margin-bottom: 18px;
+  }
+  .card h2 { margin: 0 0 12px; font-size: 15px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); }
+  label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
+  input, select, textarea {
+    width: 100%; padding: 8px 10px; background: var(--panel2); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 8px; font: inherit;
+  }
+  .row { display: flex; gap: 12px; }
+  .row > div { flex: 1; }
+  button {
+    margin-top: 14px; padding: 9px 16px; border: 0; border-radius: 8px;
+    background: var(--brand); color: #06263a; font-weight: 600; cursor: pointer;
+  }
+  button.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+  button:disabled { opacity: .5; cursor: default; }
+  .stat { display: flex; gap: 26px; }
+  .stat b { display: block; font-size: 26px; }
+  .stat span { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .5px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; }
+  .pill { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .low { background: #143; color: var(--ok); }
+  .medium { background: #3a2f0b; color: var(--warn); }
+  .high, .critical { background: #3b1414; color: var(--bad); }
+  .pending { background: #3a2f0b; color: var(--warn); }
+  .approved { background: #143; color: var(--ok); }
+  .rejected { background: #3b1414; color: var(--bad); }
+  .muted { color: var(--muted); }
+  .agent { border-left: 3px solid var(--brand); padding: 6px 12px; margin: 10px 0; background: var(--panel2); border-radius: 0 8px 8px 0; }
+  .agent h3 { margin: 0 0 4px; font-size: 13.5px; }
+  .agent .out { color: var(--muted); font-size: 13px; }
+  pre { margin: 6px 0 0; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; color: var(--muted); }
+  .empty { color: var(--muted); font-size: 13.5px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>ChainGuard AI</h1>
+  <span class="tag">Agentic AI for resilient supply chains · demo dashboard</span>
+</header>
+
+<main>
+  <div class="card">
+    <div class="stat">
+      <div><b id="n-disruptions">–</b><span>Disruptions</span></div>
+      <div><b id="n-analyses">–</b><span>Analyses</span></div>
+      <div><b id="n-approvals">–</b><span>Approvals</span></div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>1 · Report a disruption</h2>
+      <label for="title">Title</label>
+      <input id="title" value="Red Sea reroute" />
+      <div class="row">
+        <div>
+          <label for="type">Type</label>
+          <select id="type">
+            <option value="port_closure">Port closure</option>
+            <option value="weather">Weather</option>
+            <option value="tariff_change">Tariff change</option>
+            <option value="supplier_outage">Supplier outage</option>
+            <option value="port_congestion">Port congestion</option>
+            <option value="demand_spike">Demand spike</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div>
+          <label for="severity">Severity</label>
+          <select id="severity">
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+            <option value="critical" selected>Critical</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div><label for="location">Location</label><input id="location" value="Suez Canal" /></div>
+        <div><label for="delay">Delay (days)</label><input id="delay" type="number" value="14" /></div>
+        <div><label for="loss">Est. loss (USD)</label><input id="loss" type="number" value="50000" /></div>
+      </div>
+      <button id="btn-create">Create disruption</button>
+      <button id="btn-analyze" class="ghost" disabled>Run agent analysis</button>
+    </div>
+
+    <div class="card">
+      <h2>2 · Agent pipeline output</h2>
+      <div id="results"><p class="empty">Create a disruption, then run the analysis.</p></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>3 · Human-in-the-loop approvals</h2>
+    <div id="approvals"><p class="empty">No approvals yet.</p></div>
+  </div>
+
+  <div class="card">
+    <h2>4 · Audit trail</h2>
+    <div id="audit"><p class="empty">No events yet.</p></div>
+  </div>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const api = (path, opts) => fetch(path, opts).then(async (r) => {
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(body.detail || r.statusText);
+  return body;
+});
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let lastDisruptionId = null;
+
+async function refresh() {
+  const [dash, appr, audit] = await Promise.all([
+    api('/api/dashboard'),
+    api('/api/approvals?limit=10'),
+    api('/api/audit?limit=12'),
+  ]);
+  $('n-disruptions').textContent = dash.disruptions;
+  $('n-analyses').textContent = dash.analyses;
+  $('n-approvals').textContent = appr.total;
+
+  $('approvals').innerHTML = appr.items.length ? `
+    <table><thead><tr><th>ID</th><th>Analysis</th><th>Status</th><th>Reviewer</th><th>Action</th></tr></thead><tbody>
+    ${appr.items.map((a) => `<tr>
+      <td>${a.id}</td><td>#${a.analysis_id}</td>
+      <td><span class="pill ${a.status}">${a.status}</span></td>
+      <td>${esc(a.reviewer || '—')}</td>
+      <td>${a.status === 'pending'
+        ? `<button class="ghost" data-approve="${a.id}">Approve</button>
+           <button class="ghost" data-reject="${a.id}">Reject</button>`
+        : '<span class="muted">decided</span>'}</td>
+    </tr>`).join('')}
+    </tbody></table>` : '<p class="empty">No approvals yet.</p>';
+
+  $('audit').innerHTML = audit.items.length ? `
+    <table><thead><tr><th>Time</th><th>Event</th><th>Actor</th><th>Details</th></tr></thead><tbody>
+    ${audit.items.map((e) => `<tr>
+      <td class="muted">${esc((e.created_at || '').replace('T', ' ').slice(0, 19))}</td>
+      <td>${esc(e.event_type)}</td><td>${esc(e.actor)}</td>
+      <td class="muted">${esc(JSON.stringify(e.details))}</td>
+    </tr>`).join('')}
+    </tbody></table>` : '<p class="empty">No events yet.</p>';
+}
+
+function renderResult(r) {
+  const s = r.disruption_sensing, sc = r.scenario_planning, lg = r.logistics,
+        inv = r.inventory, ca = r.compliance_audit;
+  const scen = sc.scenarios.map((x) => `<tr>
+    <td>${esc(x.name)}</td><td>$${x.extra_cost_usd.toLocaleString()}</td>
+    <td>${x.delay_days} d</td><td><span class="pill ${x.risk}">${x.risk}</span></td>
+    <td>${x.within_budget ? 'yes' : '<span class="muted">over budget</span>'}</td>
+  </tr>`).join('');
+  $('results').innerHTML = `
+    <div class="agent"><h3>1 · Disruption Sensing Agent</h3>
+      <div class="out">Risk <span class="pill ${s.risk_level}">${s.risk_level}</span> (score ${s.risk_score}) · ${esc(s.disruption_type)} at ${esc(s.location)}</div></div>
+    <div class="agent"><h3>2 · Scenario Planning Agent</h3>
+      <table><thead><tr><th>Option</th><th>Cost</th><th>Delay</th><th>Risk</th><th>Budget</th></tr></thead>
+      <tbody>${scen}</tbody></table>
+      <div class="out">Recommended: <b>${esc(sc.recommended_scenario.name)}</b></div></div>
+    <div class="agent"><h3>3 · Rerouting &amp; Logistics Agent</h3>
+      <div class="out">Action: ${esc(lg.recommended_action)} · $${lg.estimated_cost_usd.toLocaleString()} · ETA ${lg.estimated_delay_days} d (recommendation only)</div></div>
+    <div class="agent"><h3>4 · Inventory Rebalancing Agent</h3>
+      <div class="out">Reorder point ${inv.reorder_point} · projected ${inv.projected_inventory} · replenish <b>${inv.recommended_replenishment_units}</b> units ($${inv.estimated_replenishment_cost_usd.toLocaleString()})</div></div>
+    <div class="agent"><h3>5 · Compliance &amp; Audit Agent</h3>
+      <div class="out">${ca.flags.length ? ca.flags.map(esc).join('<br>') : 'No flags.'}</div></div>
+    <div class="agent"><h3>Human-in-the-loop</h3>
+      <div class="out">${r.human_approval_required ? 'Approval requested — see section 3.' : 'No approval required.'}</div></div>`;
+}
+
+$('btn-create').onclick = async () => {
+  try {
+    const body = {
+      title: $('title').value, disruption_type: $('type').value,
+      location: $('location').value, severity: $('severity').value,
+      delay_days: Number($('delay').value), estimated_loss_usd: Number($('loss').value),
+    };
+    const d = await api('/api/disruptions', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    });
+    lastDisruptionId = d.id;
+    $('btn-analyze').disabled = false;
+    $('results').innerHTML = `<p class="empty">Disruption #${d.id} created. Run the analysis.</p>`;
+    refresh();
+  } catch (e) { $('results').innerHTML = `<p class="empty">Error: ${esc(e.message)}</p>`; }
+};
+
+$('btn-analyze').onclick = async () => {
+  if (!lastDisruptionId) return;
+  try {
+    const r = await api('/api/analyze', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ disruption_id: lastDisruptionId }),
+    });
+    renderResult(r);
+    refresh();
+  } catch (e) { $('results').innerHTML = `<p class="empty">Error: ${esc(e.message)}</p>`; }
+};
+
+document.addEventListener('click', async (ev) => {
+  const a = ev.target.getAttribute?.('data-approve');
+  const rj = ev.target.getAttribute?.('data-reject');
+  if (!a && !rj) return;
+  try {
+    await api(`/api/approvals/${a || rj}/decision`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ decision: a ? 'approve' : 'reject', reviewer: 'dashboard', comments: 'from dashboard' }),
+    });
+    refresh();
+  } catch (e) { alert(e.message); }
+});
+
+refresh();
+</script>
+</body>
+</html>
