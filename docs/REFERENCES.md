@@ -24,6 +24,7 @@ actually implements.
 
 | Agent | Purpose |
 | --- | --- |
+| **Orchestrator** | Maintains the roles: runs them in order, records a trace, tolerates a failing agent, and acts autonomously on incoming signals (scan → act → notify) with no human trigger. |
 | **Supplier Risk Agent** | Scores a supplier network for exposure and flags sourcing concentration (multi-tier visibility). |
 | **Explanation Agent** | Produces a plain-language rationale — via an LLM if configured, otherwise a deterministic template. |
 

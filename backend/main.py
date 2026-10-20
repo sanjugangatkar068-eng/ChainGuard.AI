@@ -1,7 +1,10 @@
+import asyncio
+import contextlib
 import csv
 import io
 import json
 import os
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Query
@@ -11,11 +14,8 @@ from fastapi.staticfiles import StaticFiles
 
 import alerting
 import database as db
-from agents import (
-    run_supply_chain_agents,
-    signal_ingestion_agent,
-    supplier_risk_agent,
-)
+import orchestrator
+from agents import signal_ingestion_agent, supplier_risk_agent
 from models import (
     ApprovalDecision,
     DisruptionRequest,
@@ -27,10 +27,35 @@ from signals import fetch_signals
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
 
+
+async def _autonomous_loop(interval):
+    """Run the orchestrator on a fixed interval with no human trigger."""
+    while True:
+        try:
+            await asyncio.to_thread(orchestrator.run_autonomous_cycle)
+        except Exception:  # noqa: BLE001 - the loop must survive a failed cycle
+            pass
+        await asyncio.sleep(interval)
+
+
+@asynccontextmanager
+async def lifespan(_app):
+    interval = orchestrator.interval_seconds()
+    task = asyncio.create_task(_autonomous_loop(interval)) if interval > 0 else None
+    try:
+        yield
+    finally:
+        if task:
+            task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
+
+
 app = FastAPI(
     title="ChainGuard AI",
     description="Agentic AI for resilient supply chains",
-    version="1.2.0"
+    version="1.3.0",
+    lifespan=lifespan,
 )
 
 def _cors_origins():
@@ -97,6 +122,18 @@ def signals(limit: int = Query(10, ge=1, le=50)):
     return classified
 
 
+@app.get("/api/orchestrator")
+def orchestrator_status():
+    """Describe the orchestrator and the roles it maintains."""
+    return orchestrator.describe()
+
+
+@app.post("/api/orchestrator/cycle")
+def orchestrator_cycle(limit: int = Query(5, ge=1, le=20)):
+    """Run one autonomous cycle now: scan signals, act, notify. No human trigger."""
+    return orchestrator.run_autonomous_cycle(limit=limit)
+
+
 @app.post("/api/disruptions")
 def create_disruption(request: DisruptionRequest):
     payload = request.model_dump()
@@ -161,9 +198,9 @@ def analyze(request: ScenarioRequest):
     if request.disruption_id is not None:
         disruption = _load_disruption(request.disruption_id)
 
-    result = run_supply_chain_agents(disruption, request)
+    result = orchestrator.run_pipeline(disruption, request)
 
-    if result["escalation"]["escalate"]:
+    if result.get("escalation", {}).get("escalate"):
         result["alert_id"] = alerting.dispatch(
             subject=f"{result['disruption_sensing']['risk_level']} disruption",
             message=result["explanation"]["explanation"],
@@ -431,7 +468,7 @@ def rebalance_inventory(request: ScenarioRequest):
     if request.disruption_id is not None:
         disruption = _load_disruption(request.disruption_id)
 
-    result = run_supply_chain_agents(
+    result = orchestrator.run_pipeline(
         disruption, request
     )["inventory"]
 

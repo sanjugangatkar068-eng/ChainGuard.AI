@@ -5,6 +5,7 @@ import Alerts from "./components/Alerts";
 import Approvals from "./components/Approvals";
 import AuditTrail from "./components/AuditTrail";
 import DisruptionForm from "./components/DisruptionForm";
+import OrchestratorCard from "./components/OrchestratorCard";
 import PipelineResult from "./components/PipelineResult";
 import StatCards from "./components/StatCards";
 
@@ -17,6 +18,8 @@ export default function App() {
   const [disruption, setDisruption] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [orchInfo, setOrchInfo] = useState(null);
+  const [cycle, setCycle] = useState(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -41,7 +44,21 @@ export default function App() {
 
   useEffect(() => {
     refresh();
+    api.orchestrator().then(setOrchInfo).catch(() => {});
   }, [refresh]);
+
+  async function handleRunCycle() {
+    setBusy(true);
+    setError("");
+    try {
+      setCycle(await api.runCycle());
+      await refresh();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function handleCreate(payload) {
     setBusy(true);
@@ -106,6 +123,13 @@ export default function App() {
 
       <main>
         <StatCards stats={stats} />
+
+        <OrchestratorCard
+          info={orchInfo}
+          busy={busy}
+          result={cycle}
+          onRun={handleRunCycle}
+        />
 
         {error && <div className="error">Error: {error}</div>}
 

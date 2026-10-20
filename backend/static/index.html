@@ -87,6 +87,12 @@
     </div>
   </div>
 
+  <div class="card">
+    <h2>Orchestrator</h2>
+    <div id="orchestrator"><p class="empty">Loading…</p></div>
+    <button id="btn-cycle">Run autonomous cycle</button>
+  </div>
+
   <div class="grid">
     <div class="card">
       <h2>1 · Report a disruption</h2>
@@ -364,7 +370,32 @@ document.addEventListener('click', async (ev) => {
   } catch (e) { alert(e.message); }
 });
 
+async function loadOrchestrator() {
+  try {
+    const info = await api('/api/orchestrator');
+    const cadence = info.interval_seconds ? `every ${info.interval_seconds}s` : 'on-demand';
+    $('orchestrator').innerHTML = `<p class="muted">${esc(info.orchestrator)} · mode <b>${esc(info.mode)}</b> ·
+      ${esc(cadence)} · alert threshold ${esc(info.alert_threshold)}<br>
+      Maintains ${info.roles.length} roles: ${info.roles.map((r) => esc(r.name)).join(', ')}</p>`;
+  } catch (e) {
+    $('orchestrator').innerHTML = `<p class="empty">Error: ${esc(e.message)}</p>`;
+  }
+}
+
+$('btn-cycle').onclick = async () => {
+  try {
+    $('orchestrator').innerHTML = '<p class="empty">Running cycle…</p>';
+    const s = await api('/api/orchestrator/cycle', { method: 'POST' });
+    $('orchestrator').innerHTML = `<p class="muted">Cycle complete — scanned ${s.scanned}, relevant ${s.relevant},
+      created ${s.created}, escalated ${s.escalated}, notified ${s.notified} (${esc(s.data_source)}).</p>`;
+    refresh();
+  } catch (e) {
+    $('orchestrator').innerHTML = `<p class="empty">Error: ${esc(e.message)}</p>`;
+  }
+};
+
 refresh();
+loadOrchestrator();
 </script>
 </body>
 </html>

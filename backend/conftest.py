@@ -21,6 +21,9 @@ os.environ.pop("SIGNAL_FEEDS", None)
 os.environ["ALERT_MIN_LEVEL"] = "high"
 os.environ.pop("ALERT_WEBHOOK_URL", None)
 
+# Never start the autonomous background loop during tests.
+os.environ["ORCHESTRATOR_INTERVAL_SECONDS"] = "0"
+
 import pytest  # noqa: E402
 
 import database as db  # noqa: E402

@@ -51,6 +51,7 @@ a clear role, defined inputs/outputs, and an explicit handoff point.
 
 | Agent | Input | Output |
 | --- | --- | --- |
+| Orchestrator | disruption + parameters | runs every role in order; trace, counts, timing |
 | Disruption Sensing | Feed items or a disruption record | disruption type, severity, risk score, confidence, source |
 | Scenario Planning | disruption + inventory parameters | scenarios (cost, delay, risk, budget fit) + recommendation |
 | Rerouting & Logistics | recommended scenario | action, route, revised ETA, cost |
@@ -83,6 +84,18 @@ a clear role, defined inputs/outputs, and an explicit handoff point.
 
 Connections are opened per operation through a `get_conn()` context manager that
 commits on success, rolls back on error, and always closes.
+
+## Autonomous operation
+
+`orchestrator.run_autonomous_cycle()` is the no-human path: it ingests signals, raises
+a de-duplicated disruption per relevant headline, runs `run_pipeline`, creates an
+approval when review is required and dispatches a notification when the Escalation
+Agent fires. `main.py` runs it on a background `asyncio` task when
+`ORCHESTRATOR_INTERVAL_SECONDS > 0` (started in the FastAPI lifespan, cancelled on
+shutdown), or on demand via `POST /api/orchestrator/cycle`.
+
+A failing role is recorded in the trace with `status: "error"`; roles depending on it
+are marked `"skipped"` rather than crashing the request.
 
 ## Configuration
 

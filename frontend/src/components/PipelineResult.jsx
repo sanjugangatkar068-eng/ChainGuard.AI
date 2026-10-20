@@ -37,6 +37,20 @@ export default function PipelineResult({ result, disruption }) {
     <section className="card">
       <h2>2 · Agent pipeline output</h2>
 
+      {result.pipeline && (
+        <div className="agent">
+          <h3>{result.pipeline.orchestrator}</h3>
+          <p className="out">
+            {result.pipeline.agents_ok} ok · {result.pipeline.agents_failed} failed ·{" "}
+            {result.pipeline.agents_skipped} skipped · {result.pipeline.duration_ms} ms
+            <br />
+            {result.pipeline.trace
+              .map((step) => `${step.agent}:${step.status}`)
+              .join("  ·  ")}
+          </p>
+        </div>
+      )}
+
       <div className="agent">
         <h3>1 · Disruption Sensing Agent</h3>
         <p className="out">

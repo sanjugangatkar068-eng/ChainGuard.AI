@@ -15,6 +15,7 @@ logging everything to an audit trail. A zero-build demo dashboard ships with it.
 
 | Agent | Role |
 | --- | --- |
+| **Orchestrator** | Runs every role in order, records a trace, tolerates a failing agent, and can act autonomously on incoming signals. |
 | Disruption Sensing Agent | Ingests RSS/Atom feeds, classifies headlines, and scores severity with a confidence and source. |
 | Scenario Planning Agent | Compares wait / reroute / expedite options on cost and delay, within budget. |
 | Rerouting & Logistics Agent | Turns the chosen scenario into a route, revised ETA and cost. |
@@ -43,6 +44,26 @@ honest note on differences and a related-project comparison, in
 **Deliberate differences:** every output is recommendation-only (nothing is executed);
 signal classification is keyword-based rather than LLM-based; and only RSS news feeds
 are wired up (no live maritime, weather or tariff APIs).
+
+## Autonomous mode
+
+By default the orchestrator runs on demand (`POST /api/analyze`). Set
+`ORCHESTRATOR_INTERVAL_SECONDS` to a positive value and it also runs **on its own** —
+no human trigger, no UI:
+
+1. scan the configured feeds,
+2. raise a disruption for each supply-chain-relevant headline (de-duplicated),
+3. run the full role pipeline on it,
+4. raise a **notification** when the result escalates, and
+5. log every step to the audit trail.
+
+```bash
+# in backend/.env
+ORCHESTRATOR_INTERVAL_SECONDS=300   # every 5 minutes
+ALERT_MIN_LEVEL=high                # notification threshold
+```
+
+You can also trigger a single cycle by hand: `POST /api/orchestrator/cycle`.
 
 ## Requirements
 
@@ -200,6 +221,8 @@ docker run -p 8000:8000 chainguard-ai
 | GET | `/health` | Health check. |
 | GET | `/api/dashboard` | Counts plus recent disruptions and approvals. |
 | GET | `/api/signals` | Fetch and classify live external signals. |
+| GET | `/api/orchestrator` | Describe the orchestrator and the roles it maintains. |
+| POST | `/api/orchestrator/cycle` | Run one autonomous cycle now (scan → act → notify). |
 | POST | `/api/disruptions` | Create a disruption record. |
 | GET | `/api/disruptions` | List disruptions (`limit`, `offset`). |
 | POST | `/api/analyze` | Run the agent pipeline for a scenario. |

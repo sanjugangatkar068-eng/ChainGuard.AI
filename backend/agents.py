@@ -385,36 +385,11 @@ def explanation_agent(result):
 
 
 def run_supply_chain_agents(disruption, params):
-    sensing = disruption_sensing(
-        disruption or {
-            "severity": "medium",
-            "delay_days": 0,
-            "disruption_type": "other",
-            "location": "Unknown",
-            "title": "Manual scenario"
-        }
-    )
+    """Run the full role pipeline.
 
-    scenarios = scenario_planning(disruption, params)
-    logistics = logistics_agent(scenarios)
-    inventory = inventory_agent(disruption, params)
+    Kept for backwards compatibility. The coordination itself now lives in the
+    orchestrator agent, imported lazily here to avoid a circular import.
+    """
+    from orchestrator import run_pipeline
 
-    compliance = compliance_agent(
-        sensing, scenarios, logistics
-    )
-
-    result = {
-        "disruption_sensing": sensing,
-        "scenario_planning": scenarios,
-        "logistics": logistics,
-        "inventory": inventory,
-        "compliance_audit": compliance,
-        "human_approval_required": compliance["review_required"]
-    }
-
-    if getattr(params, "suppliers", None):
-        result["supplier_risk"] = supplier_risk_agent(params.suppliers, disruption)
-
-    result["escalation"] = escalation_agent(sensing, compliance)
-    result["explanation"] = explanation_agent(result)
-    return result
+    return run_pipeline(disruption, params)

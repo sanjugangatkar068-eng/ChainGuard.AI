@@ -20,6 +20,9 @@ async function request(path, { method = "GET", body } = {}) {
 export const api = {
   dashboard: () => request("/api/dashboard"),
   signals: (limit = 8) => request(`/api/signals?limit=${limit}`),
+  orchestrator: () => request("/api/orchestrator"),
+  runCycle: (limit = 5) =>
+    request(`/api/orchestrator/cycle?limit=${limit}`, { method: "POST" }),
   createDisruption: (body) => request("/api/disruptions", { method: "POST", body }),
   analyze: (body) => request("/api/analyze", { method: "POST", body }),
   approvals: (limit = 10) => request(`/api/approvals?limit=${limit}`),
