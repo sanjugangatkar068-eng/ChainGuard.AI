@@ -1,4 +1,3 @@
-
 from math import ceil
 
 
@@ -10,8 +9,11 @@ def disruption_sensing(disruption):
         "critical": 95
     }
 
-    score = severity_scores[disruption["severity"]]
-    score = min(100, score + disruption["delay_days"])
+    severity = disruption.get("severity", "medium")
+    delay_days = disruption.get("delay_days", 0)
+
+    score = severity_scores.get(severity, 45)
+    score = min(100, score + delay_days)
 
     if score >= 80:
         level = "critical"
@@ -26,21 +28,21 @@ def disruption_sensing(disruption):
         "agent": "Disruption Sensing Agent",
         "risk_score": score,
         "risk_level": level,
-        "disruption_type": disruption["disruption_type"],
-        "location": disruption["location"],
+        "disruption_type": disruption.get("disruption_type", "other"),
+        "location": disruption.get("location", "Unknown"),
         "signals": [
-            disruption["title"],
-            f"Delay: {disruption['delay_days']} days",
-            f"Severity: {disruption['severity']}"
+            disruption.get("title", "Manual scenario"),
+            f"Delay: {delay_days} days",
+            f"Severity: {severity}"
         ],
         "data_source": "User-provided demo data"
     }
 
 
 def scenario_planning(disruption, params):
-    delay = disruption["delay_days"] if disruption else 0
-    tariff = disruption["tariff_percent"] if disruption else 0
-    loss = disruption["estimated_loss_usd"] if disruption else 0
+    delay = disruption.get("delay_days", 0) if disruption else 0
+    tariff = disruption.get("tariff_percent", 0) if disruption else 0
+    loss = disruption.get("estimated_loss_usd", 0) if disruption else 0
 
     base_cost = (
         loss
@@ -127,7 +129,7 @@ def logistics_agent(scenario_result):
 
 
 def inventory_agent(disruption, params):
-    delay = disruption["delay_days"] if disruption else 0
+    delay = disruption.get("delay_days", 0) if disruption else 0
 
     demand_during_lead_time = (
         params.demand_units_per_day * params.lead_time_days

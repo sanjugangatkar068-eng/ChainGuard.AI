@@ -1,6 +1,4 @@
-
 import json
-import sqlite3
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -48,11 +46,15 @@ def health():
 
 @app.get("/api/dashboard")
 def dashboard():
+    recent = db.list_records("disruptions", 5)
+    for record in recent:
+        record["payload"] = json.loads(record["payload"])
+
     return {
-        "disruptions": len(db.list_records("disruptions")),
-        "analyses": len(db.list_records("analyses")),
+        "disruptions": db.count_records("disruptions"),
+        "analyses": db.count_records("analyses"),
         "approvals": db.list_records("approvals", 20),
-        "recent_disruptions": db.list_records("disruptions", 5)
+        "recent_disruptions": recent
     }
 
 
@@ -94,25 +96,25 @@ def list_disruptions():
     }
 
 
+def _load_disruption(disruption_id):
+    record = db.get_record("disruptions", disruption_id)
+    if not record:
+        raise HTTPException(
+            status_code=404,
+            detail="Disruption not found"
+        )
+    return {
+        "id": record["id"],
+        **json.loads(record["payload"])
+    }
+
+
 @app.post("/api/analyze")
 def analyze(request: ScenarioRequest):
     disruption = None
 
     if request.disruption_id is not None:
-        record = db.get_record(
-            "disruptions", request.disruption_id
-        )
-
-        if not record:
-            raise HTTPException(
-                status_code=404,
-                detail="Disruption not found"
-            )
-
-        disruption = {
-            "id": record["id"],
-            **json.loads(record["payload"])
-        }
+        disruption = _load_disruption(request.disruption_id)
 
     result = run_supply_chain_agents(disruption, request)
 
@@ -205,25 +207,17 @@ def decide_approval(
         else "rejected"
     )
 
-    with sqlite3.connect(db.DB_NAME) as conn:
-        conn.execute(
-            """
-            UPDATE approvals
-            SET status=?, reviewer=?, comments=?, decided_at=?
-            WHERE id=? AND status='pending'
-            """,
-            (
-                status,
-                request.reviewer,
-                request.comments,
-                db.now(),
-                approval_id
-            )
-        )
+    recorded = db.decide_approval(
+        approval_id,
+        status,
+        request.reviewer,
+        request.comments
+    )
 
-        conn.execute(
-            "UPDATE analyses SET status=? WHERE id=?",
-            (status, approval["analysis_id"])
+    if not recorded:
+        raise HTTPException(
+            status_code=409,
+            detail="Approval already decided"
         )
 
     db.log_event(
@@ -258,20 +252,7 @@ def rebalance_inventory(request: ScenarioRequest):
     disruption = None
 
     if request.disruption_id is not None:
-        record = db.get_record(
-            "disruptions", request.disruption_id
-        )
-
-        if not record:
-            raise HTTPException(
-                status_code=404,
-                detail="Disruption not found"
-            )
-
-        disruption = {
-            "id": record["id"],
-            **json.loads(record["payload"])
-        }
+        disruption = _load_disruption(request.disruption_id)
 
     result = run_supply_chain_agents(
         disruption, request
