@@ -225,10 +225,18 @@ CI runs both suites on every push and pull request (see `.github/workflows/ci.ym
 
 ## Docker
 
+Run from the **repository root** — the build context must contain `backend/`:
+
 ```bash
 docker build -f backend/Dockerfile -t chainguard-ai .
-docker run -p 8000:8000 chainguard-ai
+docker run -p 8000:8000 -e API_KEY=change-me chainguard-ai
 ```
+
+Building from inside `backend/` fails with `"/backend": not found`. The container
+honours `$PORT` if the platform sets one, otherwise it listens on 8000.
+
+See [`docs/DEPLOY.md`](docs/DEPLOY.md) for step-by-step hosting instructions (backend,
+frontend and the environment variables each needs).
 
 ## API endpoints
 
@@ -309,6 +317,7 @@ curl -X POST http://127.0.0.1:8000/api/approvals/1/decision \
 ├── pyproject.toml          # ruff + pytest configuration
 ├── docs
 │   ├── ARCHITECTURE.md     # component map, data flow, data model
+│   ├── DEPLOY.md           # hosting steps + troubleshooting
 │   └── REFERENCES.md       # theme alignment + related projects
 ├── backend
     ├── main.py             # FastAPI app and routes
