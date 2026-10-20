@@ -1,4 +1,54 @@
+import json
 from math import ceil
+
+from llm import LLMUnavailable, complete, is_configured
+
+# Keyword heuristics used to classify an incoming headline without an LLM.
+KEYWORD_MAP = {
+    "port_closure": ["closure", "closed", "blockade", "blocked", "canal", "strait",
+                     "shut", "strike", "attack", "reroute", "diversion", "suez",
+                     "hormuz", "red sea", "cape of good hope"],
+    "port_congestion": ["congestion", "backlog", "queue", "queues", "delays at",
+                        "vessel", "freight", "shipping"],
+    "weather": ["storm", "hurricane", "typhoon", "flood", "drought", "cyclone",
+                "weather", "earthquake"],
+    "tariff_change": ["tariff", "duty", "duties", "levy", "trade war", "sanction",
+                      "sanctions"],
+    "supplier_outage": ["supplier", "factory", "plant", "shortage", "bankrupt",
+                        "outage", "fire"],
+    "demand_spike": ["surge", "spike", "demand", "stockout"],
+}
+
+
+def classify_signal(text):
+    """Map free text to a disruption_type using keyword heuristics."""
+    haystack = (text or "").lower()
+    for disruption_type, words in KEYWORD_MAP.items():
+        if any(word in haystack for word in words):
+            return disruption_type
+    return "other"
+
+
+def signal_ingestion_agent(signals):
+    """Turn raw feed items into classified signals."""
+    items = []
+    for signal in signals:
+        text = f"{signal.get('title', '')} {signal.get('summary', '')}"
+        items.append({
+            "title": signal.get("title", ""),
+            "link": signal.get("link", ""),
+            "published": signal.get("published"),
+            "source": signal.get("source", "unknown"),
+            "disruption_type": classify_signal(text),
+        })
+
+    live = [i for i in items if i["source"] != "sample"]
+    return {
+        "agent": "Disruption Sensing Agent (signal ingestion)",
+        "count": len(items),
+        "signals": items,
+        "data_source": "Live RSS/Atom feeds" if live else "Offline sample",
+    }
 
 
 def disruption_sensing(disruption):
@@ -185,6 +235,64 @@ def compliance_agent(sensing, scenarios, logistics):
     }
 
 
+EXPLANATION_SYSTEM = (
+    "You are ChainGuard AI, a supply-chain resilience analyst. "
+    "Given a JSON risk assessment, write a concise three-sentence rationale a "
+    "logistics manager can act on. Cite the specific numbers, state the "
+    "recommended action, and note whether human approval is required. "
+    "Do not invent data that is not in the JSON."
+)
+
+
+def _rule_based_explanation(result):
+    sensing = result["disruption_sensing"]
+    planning = result["scenario_planning"]
+    logistics = result["logistics"]
+    inventory = result["inventory"]
+    recommended = planning["recommended_scenario"]
+
+    closing = (
+        "Human approval is required before acting."
+        if result["human_approval_required"]
+        else "No approval is required."
+    )
+
+    return (
+        f"Detected a {sensing['risk_level']}-risk "
+        f"{sensing['disruption_type']} at {sensing['location']} "
+        f"(score {sensing['risk_score']}/100). "
+        f"The scenario planner recommends '{recommended['name']}' at about "
+        f"${recommended['extra_cost_usd']:,.0f} extra cost and "
+        f"{recommended['delay_days']} days' delay, with "
+        f"{inventory['recommended_replenishment_units']} units of inventory "
+        f"replenishment. {closing}"
+    )
+
+
+def explanation_agent(result):
+    """Narrate the assessment, using the LLM when available."""
+    if is_configured():
+        try:
+            text = complete(
+                EXPLANATION_SYSTEM,
+                json.dumps(result, indent=2),
+                max_tokens=320,
+            )
+            return {
+                "agent": "Explanation Agent",
+                "reasoning_source": "llm",
+                "explanation": text,
+            }
+        except LLMUnavailable:
+            pass
+
+    return {
+        "agent": "Explanation Agent",
+        "reasoning_source": "rules",
+        "explanation": _rule_based_explanation(result),
+    }
+
+
 def run_supply_chain_agents(disruption, params):
     sensing = disruption_sensing(
         disruption or {
@@ -204,7 +312,7 @@ def run_supply_chain_agents(disruption, params):
         sensing, scenarios, logistics
     )
 
-    return {
+    result = {
         "disruption_sensing": sensing,
         "scenario_planning": scenarios,
         "logistics": logistics,
@@ -212,3 +320,6 @@ def run_supply_chain_agents(disruption, params):
         "compliance_audit": compliance,
         "human_approval_required": compliance["review_required"]
     }
+
+    result["explanation"] = explanation_agent(result)
+    return result

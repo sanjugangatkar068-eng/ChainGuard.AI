@@ -6,7 +6,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 import database as db
-from agents import run_supply_chain_agents
+from agents import run_supply_chain_agents, signal_ingestion_agent
+from signals import fetch_signals
 from models import (
     DisruptionRequest,
     ScenarioRequest,
@@ -19,7 +20,7 @@ STATIC_DIR = BASE_DIR / "static"
 app = FastAPI(
     title="ChainGuard AI",
     description="Agentic AI for resilient supply chains",
-    version="1.1.0"
+    version="1.2.0"
 )
 
 app.add_middleware(
@@ -62,6 +63,21 @@ def dashboard():
         "approvals": db.list_records("approvals", 20),
         "recent_disruptions": recent
     }
+
+
+@app.get("/api/signals")
+def signals(limit: int = Query(10, ge=1, le=50)):
+    """Fetch external disruption signals and classify them."""
+    raw = fetch_signals(limit=limit)
+    classified = signal_ingestion_agent(raw)
+
+    db.log_event(
+        "signals_ingested",
+        "system",
+        {"count": classified["count"], "source": classified["data_source"]}
+    )
+
+    return classified
 
 
 @app.post("/api/disruptions")

@@ -11,6 +11,12 @@ os.environ.setdefault(
     os.path.join(tempfile.mkdtemp(prefix="chainguard-test-"), "test.db"),
 )
 
+# Keep tests deterministic regardless of the developer's environment:
+# no LLM, and no live feed URLs.
+os.environ["LLM_PROVIDER"] = "none"
+os.environ.pop("LLM_API_KEY", None)
+os.environ.pop("SIGNAL_FEEDS", None)
+
 import pytest  # noqa: E402
 
 import database as db  # noqa: E402

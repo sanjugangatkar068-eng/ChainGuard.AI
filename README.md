@@ -3,10 +3,10 @@
 **Agentic AI for resilient supply chains.**
 
 ChainGuard AI is a FastAPI backend that models the "Resilient Supply Chains" hackathon
-theme as a pipeline of collaborating agents. It senses a disruption, plans response
-scenarios, recommends logistics and inventory actions, flags compliance concerns, and
-routes high-stakes decisions to a human for approval — logging everything to an
-audit trail. A zero-build demo dashboard ships with it.
+theme as a pipeline of collaborating agents. It ingests external disruption signals,
+senses risk, plans response scenarios, recommends logistics and inventory actions,
+flags compliance concerns, and routes high-stakes decisions to a human for approval —
+logging everything to an audit trail. A zero-build demo dashboard ships with it.
 
 > All outputs are **recommendations only**. The system never executes an external
 > action (no bookings, no orders); a human decision is required for high-risk cases.
@@ -15,11 +15,12 @@ audit trail. A zero-build demo dashboard ships with it.
 
 | Agent | Role |
 | --- | --- |
-| 1. Disruption Sensing Agent | Scores a disruption's severity into a risk level. |
-| 2. Scenario Planning Agent | Compares wait / reroute / expedite options on cost and delay, within budget. |
-| 3. Rerouting & Logistics Agent | Turns the chosen scenario into a concrete recommended action. |
-| 4. Inventory Rebalancing Agent | Recomputes reorder point and replenishment needs. |
-| 5. Compliance & Audit Agent | Flags high-risk cases and budget breaches; decides if human approval is required. |
+| Disruption Sensing Agent | Ingests RSS/Atom feeds, classifies headlines, and scores a disruption's severity. |
+| Scenario Planning Agent | Compares wait / reroute / expedite options on cost and delay, within budget. |
+| Rerouting & Logistics Agent | Turns the chosen scenario into a concrete recommended action. |
+| Inventory Rebalancing Agent | Recomputes reorder point and replenishment needs. |
+| Compliance & Audit Agent | Flags high-risk cases and budget breaches; decides if human approval is required. |
+| Explanation Agent | Narrates the assessment in plain language (LLM if configured, else rules). |
 | Human-in-the-loop | A reviewer approves or rejects high-risk recommendations. |
 
 ## Requirements
@@ -51,6 +52,30 @@ uvicorn main:app --reload --port 8000
 - Interactive API docs: http://127.0.0.1:8000/docs
 - Demo dashboard: http://127.0.0.1:8000/dashboard
 
+## Configuration
+
+Copy `.env.example` to `.env`. Everything is optional — with no configuration the
+app runs on rules-based reasoning and default feeds.
+
+| Variable | Purpose |
+| --- | --- |
+| `APP_NAME` | Display name. |
+| `DATABASE_PATH` | SQLite file path; relative paths resolve to `backend/`. |
+| `LLM_PROVIDER` | `none` (default), `openai`, or `anthropic`. |
+| `LLM_API_KEY` | Provider API key. **Never commit this.** |
+| `LLM_MODEL` | Optional model override. |
+| `LLM_BASE_URL` | Optional base URL (for OpenAI-compatible endpoints). |
+| `SIGNAL_FEEDS` | Comma-separated RSS/Atom feed URLs. |
+
+**LLM reasoning is optional.** With `LLM_PROVIDER=none` (or no key), the Explanation
+Agent uses a deterministic template, so the app always works. Set a provider and key
+to get natural-language rationales. The key is read from the environment only — it is
+never hardcoded.
+
+**Signals.** The Disruption Sensing Agent pulls headlines from `SIGNAL_FEEDS` (default:
+Google News RSS queries on supply-chain disruptions). If every feed is unreachable it
+falls back to a built-in offline sample, so demos never come back empty.
+
 ## Tests
 
 ```bash
@@ -74,6 +99,7 @@ docker run -p 8000:8000 chainguard-ai
 | GET | `/` | Service banner. |
 | GET | `/health` | Health check. |
 | GET | `/api/dashboard` | Counts plus recent disruptions and approvals. |
+| GET | `/api/signals` | Fetch and classify live external signals. |
 | POST | `/api/disruptions` | Create a disruption record. |
 | GET | `/api/disruptions` | List disruptions (`limit`, `offset`). |
 | POST | `/api/analyze` | Run the agent pipeline for a scenario. |
@@ -89,6 +115,9 @@ List endpoints accept `limit` (1–500, default 50) and `offset` (default 0) and
 ## Quick example
 
 ```bash
+# 0. See live disruption signals
+curl http://127.0.0.1:8000/api/signals?limit=5
+
 # 1. Create a disruption
 curl -X POST http://127.0.0.1:8000/api/disruptions \
   -H "Content-Type: application/json" \
@@ -116,11 +145,13 @@ curl -X POST http://127.0.0.1:8000/api/approvals/1/decision \
 ├── README.md
 └── backend
     ├── main.py             # FastAPI app and routes
-    ├── agents.py           # agent pipeline
+    ├── agents.py           # agent pipeline + classification
+    ├── signals.py          # RSS/Atom ingestion
+    ├── llm.py              # provider-agnostic LLM client
     ├── models.py           # Pydantic request models
     ├── database.py         # SQLite helpers
     ├── conftest.py         # test fixtures
-    ├── tests/test_api.py   # test suite
+    ├── tests/              # test suite
     ├── static/index.html   # demo dashboard
     ├── requirements.txt
     ├── requirements-dev.txt
@@ -128,15 +159,9 @@ curl -X POST http://127.0.0.1:8000/api/approvals/1/decision \
     └── .env.example
 ```
 
-## Configuration
-
-`.env` (copied from `.env.example`) supports:
-
-- `APP_NAME` — display name.
-- `DATABASE_PATH` — SQLite file path; relative paths resolve to the `backend/` folder.
-
 ## Notes
 
 - The SQLite database (`chainguard.db`) is created on first run and is **not**
   committed to git.
 - `.env` holds local config and is git-ignored; only `.env.example` is tracked.
+- No credentials are ever hardcoded; all secrets come from the environment.
