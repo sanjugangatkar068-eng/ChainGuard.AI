@@ -52,7 +52,29 @@ uvicorn main:app --reload --port 8000
 ```
 
 - Interactive API docs: http://127.0.0.1:8000/docs
-- Demo dashboard: http://127.0.0.1:8000/dashboard
+- Built-in demo dashboard (no build step): http://127.0.0.1:8000/dashboard
+
+## Frontend (React)
+
+A Vite + React single-page app lives in `frontend/`. It talks to the API over HTTP and
+covers the whole flow: report a disruption, run the agent pipeline, review the
+per-agent output (with charts), approve/reject, acknowledge alerts and read the audit
+trail.
+
+```bash
+cd frontend
+npm install
+cp .env.example .env        # optional: set VITE_API_URL
+npm run dev                 # http://localhost:5173
+```
+
+Start the backend first (port 8000). The frontend reads its API base URL from
+`VITE_API_URL` (default `http://127.0.0.1:8000`), and the backend allows the Vite origin
+via `CORS_ORIGINS` in `backend/.env`. Production build: `npm run build` (output in
+`frontend/dist`).
+
+> There is also a dependency-free static dashboard served by the backend at
+> `/dashboard` — handy if Node isn't installed or you want a guaranteed-offline demo.
 
 ## Configuration
 
@@ -213,7 +235,7 @@ curl -X POST http://127.0.0.1:8000/api/approvals/1/decision \
 ├── pyproject.toml          # ruff + pytest configuration
 ├── docs
 │   └── ARCHITECTURE.md     # component map, data flow, data model
-└── backend
+├── backend
     ├── main.py             # FastAPI app and routes
     ├── agents.py           # agent pipeline + classification
     ├── signals.py          # RSS/Atom ingestion
@@ -228,6 +250,17 @@ curl -X POST http://127.0.0.1:8000/api/approvals/1/decision \
     ├── requirements-dev.txt
     ├── Dockerfile
     └── .env.example
+└── frontend
+    ├── index.html
+    ├── package.json
+    ├── vite.config.js
+    ├── .env.example
+    └── src
+        ├── main.jsx
+        ├── App.jsx
+        ├── api.js
+        ├── styles.css
+        └── components/     # StatCards, DisruptionForm, PipelineResult, ...
 ```
 
 See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the component map and data flow.

@@ -17,6 +17,11 @@ ENV/
 .env.*
 !.env.example
 
+# --- Node / frontend ---
+node_modules/
+dist/
+.vite/
+
 # --- Local database ---
 *.db
 *.sqlite

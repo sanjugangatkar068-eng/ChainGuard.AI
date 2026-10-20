@@ -1,0 +1,320 @@
+:root {
+  --bg: #0f172a;
+  --panel: #1e293b;
+  --panel2: #273449;
+  --ink: #e2e8f0;
+  --muted: #94a3b8;
+  --line: #334155;
+  --brand: #38bdf8;
+  --ok: #34d399;
+  --warn: #fbbf24;
+  --bad: #f87171;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+}
+
+.app header {
+  padding: 20px 28px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.app header h1 {
+  margin: 0;
+  font-size: 20px;
+  letter-spacing: 0.3px;
+}
+
+.tag {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.api {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 12px;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+}
+
+main {
+  padding: 22px 28px 48px;
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin-bottom: 18px;
+}
+
+.card h2 {
+  margin: 0 0 12px;
+  font-size: 15px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--muted);
+}
+
+.stats {
+  display: flex;
+  gap: 30px;
+}
+
+.stats b {
+  display: block;
+  font-size: 26px;
+}
+
+.stats span {
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+label {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin: 10px 0 4px;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  padding: 8px 10px;
+  background: var(--panel2);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: inherit;
+}
+
+textarea {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 12.5px;
+  resize: vertical;
+}
+
+.row {
+  display: flex;
+  gap: 12px;
+}
+
+.row > div {
+  flex: 1;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+button {
+  padding: 9px 16px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--brand);
+  color: #06263a;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button.ghost {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  margin-right: 6px;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+  margin-top: 6px;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 7px 8px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+
+th {
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.pill {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.low {
+  background: #143b2c;
+  color: var(--ok);
+}
+
+.medium {
+  background: #3a2f0b;
+  color: var(--warn);
+}
+
+.high,
+.critical {
+  background: #3b1414;
+  color: var(--bad);
+}
+
+.pending {
+  background: #3a2f0b;
+  color: var(--warn);
+}
+
+.approved {
+  background: #143b2c;
+  color: var(--ok);
+}
+
+.rejected {
+  background: #3b1414;
+  color: var(--bad);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.small {
+  font-size: 12.5px;
+}
+
+.empty {
+  color: var(--muted);
+  font-size: 13.5px;
+}
+
+.error {
+  background: #3b1414;
+  border: 1px solid var(--bad);
+  color: var(--bad);
+  padding: 10px 14px;
+  border-radius: 10px;
+  margin-bottom: 16px;
+}
+
+.error.inline {
+  margin: 6px 0 0;
+  font-size: 12.5px;
+}
+
+.agent {
+  border-left: 3px solid var(--brand);
+  padding: 8px 12px;
+  margin: 10px 0;
+  background: var(--panel2);
+  border-radius: 0 8px 8px 0;
+}
+
+.agent h3 {
+  margin: 0 0 4px;
+  font-size: 13.5px;
+}
+
+.out {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 4px 0 0;
+}
+
+.chart {
+  width: 100%;
+  height: auto;
+  margin-top: 8px;
+}
+
+.chart-label {
+  fill: var(--muted);
+  font-size: 12px;
+}
+
+.chart-value {
+  fill: var(--ink);
+  font-size: 12px;
+}
+
+.route {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 2px;
+  flex-wrap: wrap;
+}
+
+.route .node {
+  padding: 5px 11px;
+  border-radius: 8px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  font-size: 12.5px;
+}
+
+.route .node.bad {
+  border-color: var(--bad);
+  color: var(--bad);
+}
+
+.route .line {
+  flex: 1;
+  min-width: 26px;
+  height: 2px;
+  background: var(--line);
+}
+
+.route .eta {
+  font-size: 12.5px;
+  color: var(--warn);
+  font-weight: 600;
+}
