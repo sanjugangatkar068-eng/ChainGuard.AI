@@ -25,9 +25,24 @@ logging everything to an audit trail. A zero-build demo dashboard ships with it.
 | Explanation Agent | Narrates the assessment in plain language (LLM if configured, else rules). |
 | Human-in-the-loop | A reviewer approves or rejects high-risk recommendations. |
 
-See [`docs/REFERENCES.md`](docs/REFERENCES.md) for how these map to the hackathon
-theme's agent roles, an honest note on where this implementation differs, and a
-comparison with related open-source projects.
+## Theme alignment
+
+How the hackathon theme's agent roles map to this codebase (full version, plus an
+honest note on differences and a related-project comparison, in
+[`docs/REFERENCES.md`](docs/REFERENCES.md)):
+
+| Theme role | In ChainGuard AI | Where |
+| --- | --- | --- |
+| Disruption Sensing Agent | RSS/Atom ingestion, headline classification, severity scoring with confidence and source | `signals.py`, `agents.disruption_sensing`, `GET /api/signals` |
+| Scenario Planning Agent | wait / reroute / expedite options with cost, delay, risk and budget fit | `agents.scenario_planning` |
+| Rerouting & Logistics Agent | recommended action, route and revised ETA | `agents.logistics_agent` |
+| Inventory Rebalancing Agent | reorder point, projected stock and replenishment units | `agents.inventory_agent` |
+| Compliance & Audit Agent | flags, compliance report, audit log and CSV exports | `agents.compliance_agent`, `GET /api/audit`, `GET /api/export/analyses.csv` |
+| Human-in-the-loop | approval records, approve/reject, threshold escalation alerts | `POST /api/approvals/{id}/decision`, `agents.escalation_agent` |
+
+**Deliberate differences:** every output is recommendation-only (nothing is executed);
+signal classification is keyword-based rather than LLM-based; and only RSS news feeds
+are wired up (no live maritime, weather or tariff APIs).
 
 ## Requirements
 
