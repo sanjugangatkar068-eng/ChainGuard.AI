@@ -77,6 +77,20 @@ never hardcoded.
 Google News RSS queries on supply-chain disruptions). If every feed is unreachable it
 falls back to a built-in offline sample, so demos never come back empty.
 
+## Demo data
+
+Populate the database with sample disruptions, analyses and approvals so a demo
+starts with content:
+
+```bash
+cd backend
+python seed.py            # add demo data
+python seed.py --reset    # clear tables first
+```
+
+The dashboard then opens with data already in it. The seed runs the full agent
+pipeline (including the Supplier Risk agent) on each demo disruption.
+
 ## Tests
 
 ```bash
@@ -148,7 +162,10 @@ curl -X POST http://127.0.0.1:8000/api/approvals/1/decision \
 ├── .dockerignore
 ├── .gitignore
 ├── .github/workflows/ci.yml
+├── LICENSE
 ├── README.md
+├── docs
+│   └── ARCHITECTURE.md     # component map, data flow, data model
 └── backend
     ├── main.py             # FastAPI app and routes
     ├── agents.py           # agent pipeline + classification
@@ -156,14 +173,17 @@ curl -X POST http://127.0.0.1:8000/api/approvals/1/decision \
     ├── llm.py              # provider-agnostic LLM client
     ├── models.py           # Pydantic request models
     ├── database.py         # SQLite helpers
+    ├── seed.py             # demo-data seeder
     ├── conftest.py         # test fixtures
     ├── tests/              # test suite
-    ├── static/index.html   # demo dashboard
+    ├── static/index.html   # demo dashboard (charts, no build step)
     ├── requirements.txt
     ├── requirements-dev.txt
     ├── Dockerfile
     └── .env.example
 ```
+
+See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the component map and data flow.
 
 ## Notes
 
@@ -171,3 +191,4 @@ curl -X POST http://127.0.0.1:8000/api/approvals/1/decision \
   committed to git.
 - `.env` holds local config and is git-ignored; only `.env.example` is tracked.
 - No credentials are ever hardcoded; all secrets come from the environment.
+- Released under the MIT License (see `LICENSE`).

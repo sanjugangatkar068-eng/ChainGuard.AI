@@ -62,6 +62,14 @@
   .agent .out { color: var(--muted); font-size: 13px; }
   pre { margin: 6px 0 0; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; color: var(--muted); }
   .empty { color: var(--muted); font-size: 13.5px; }
+  svg.chart { width: 100%; height: auto; margin-top: 8px; }
+
+  /* schematic route strip */
+  .route { display: flex; align-items: center; gap: 8px; margin: 10px 0 2px; flex-wrap: wrap; }
+  .route .node { padding: 5px 11px; border-radius: 8px; background: var(--panel); border: 1px solid var(--line); font-size: 12.5px; }
+  .route .node.bad { border-color: var(--bad); color: var(--bad); }
+  .route .line { flex: 1; min-width: 26px; height: 2px; background: var(--line); position: relative; }
+  .route .eta { font-size: 12.5px; color: var(--warn); font-weight: 600; }
 </style>
 </head>
 <body>
@@ -148,7 +156,8 @@ const api = (path, opts) => fetch(path, opts).then(async (r) => {
 });
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const money = (n) => '$' + Number(n).toLocaleString();
-let lastDisruptionId = null;
+const COLOR = { low: '#34d399', medium: '#fbbf24', high: '#f87171', critical: '#f87171', brand: '#38bdf8' };
+let lastDisruption = null;
 
 function parseSuppliers() {
   const raw = $('suppliers').value.trim();
@@ -158,6 +167,58 @@ function parseSuppliers() {
   return parsed;
 }
 
+// --- tiny SVG chart helpers ------------------------------------------------
+function hbarChart(rows, maxValue, labelWidth = 150, barWidth = 340) {
+  const height = rows.length * 30 + 8;
+  const body = rows.map((r, i) => {
+    const y = i * 30 + 8;
+    const w = maxValue > 0 ? Math.max(2, (r.value / maxValue) * barWidth) : 2;
+    return `<text x="0" y="${y + 13}" fill="#94a3b8" font-size="12">${esc(r.label)}</text>
+      <rect x="${labelWidth}" y="${y + 2}" width="${w}" height="16" rx="4" fill="${r.color || COLOR.brand}"/>
+      <text x="${labelWidth + w + 8}" y="${y + 15}" fill="#e2e8f0" font-size="12">${esc(r.sub)}</text>`;
+  }).join('');
+  return `<svg class="chart" viewBox="0 0 ${labelWidth + barWidth + 90} ${height}" preserveAspectRatio="xMinYMin meet">${body}</svg>`;
+}
+
+function scenarioChart(scenarios) {
+  const maxDelay = Math.max(...scenarios.map((s) => s.delay_days), 1);
+  return hbarChart(
+    scenarios.map((s) => ({
+      label: s.name,
+      value: s.delay_days,
+      color: COLOR[s.risk] || COLOR.brand,
+      sub: `${s.delay_days} d · ${money(s.extra_cost_usd)}`,
+    })),
+    maxDelay
+  );
+}
+
+function supplierChart(suppliers) {
+  const maxShare = Math.max(...suppliers.map((s) => s.spend_share_pct), 1);
+  return hbarChart(
+    suppliers.map((s) => ({
+      label: s.name,
+      value: s.spend_share_pct,
+      color: COLOR[s.risk_level] || COLOR.brand,
+      sub: `${s.spend_share_pct}% · ${s.risk_level}`,
+    })),
+    maxShare
+  );
+}
+
+function routeStrip(lg, disruption) {
+  const place = (disruption && disruption.location) || 'Disruption';
+  return `<div class="route">
+    <span class="node">Origin</span>
+    <span class="line"></span>
+    <span class="node bad">${esc(place)}</span>
+    <span class="line"></span>
+    <span class="node">Destination</span>
+    <span class="eta">revised ETA +${lg.revised_eta_days} d</span>
+  </div>`;
+}
+
+// --- data loading ----------------------------------------------------------
 async function refresh() {
   const [dash, appr, audit] = await Promise.all([
     api('/api/dashboard'),
@@ -193,22 +254,16 @@ async function refresh() {
 
 function renderSupplierRisk(sr) {
   if (!sr) return '';
-  const rows = sr.suppliers.map((s) => `<tr>
-    <td>${esc(s.name)}</td><td>T${s.tier}</td><td>${esc(s.country)}</td>
-    <td>${s.single_source ? 'yes' : 'no'}</td>
-    <td>${s.spend_share_pct}%</td>
-    <td><span class="pill ${s.risk_level}">${s.risk_level}</span> (${s.risk_score})</td>
-  </tr>`).join('');
   return `<div class="agent"><h3>6 · Supplier Risk Agent</h3>
-    <table><thead><tr><th>Supplier</th><th>Tier</th><th>Country</th><th>Sole src</th><th>Spend</th><th>Risk</th></tr></thead>
-    <tbody>${rows}</tbody></table>
-    <div class="out">Concentration risk: <b>${sr.concentration_risk ? 'YES' : 'no'}</b> · ${esc(sr.recommendation)}</div></div>`;
+    ${supplierChart(sr.suppliers)}
+    <div class="out">Concentration risk: <b>${sr.concentration_risk ? 'YES' : 'no'}</b> ·
+    highest risk: ${esc(sr.highest_risk_supplier || '—')} · ${esc(sr.recommendation)}</div></div>`;
 }
 
-function renderResult(r) {
+function renderResult(r, disruption) {
   const s = r.disruption_sensing, sc = r.scenario_planning, lg = r.logistics,
         inv = r.inventory, ca = r.compliance_audit;
-  const scen = sc.scenarios.map((x) => `<tr>
+  const scenRows = sc.scenarios.map((x) => `<tr>
     <td>${esc(x.name)}</td><td>${money(x.extra_cost_usd)}</td>
     <td>${x.delay_days} d</td><td><span class="pill ${x.risk}">${x.risk}</span></td>
     <td>${x.within_budget ? 'yes' : '<span class="muted">over budget</span>'}</td>
@@ -218,14 +273,17 @@ function renderResult(r) {
       <div class="out">Risk <span class="pill ${s.risk_level}">${s.risk_level}</span> (score ${s.risk_score}) ·
       confidence ${s.confidence} · ${esc(s.disruption_type)} at ${esc(s.location)} · source: ${esc(s.source)}</div></div>
     <div class="agent"><h3>2 · Scenario Planning Agent</h3>
+      ${scenarioChart(sc.scenarios)}
       <table><thead><tr><th>Option</th><th>Cost</th><th>Delay</th><th>Risk</th><th>Budget</th></tr></thead>
-      <tbody>${scen}</tbody></table>
+      <tbody>${scenRows}</tbody></table>
       <div class="out">Recommended: <b>${esc(sc.recommended_scenario.name)}</b></div></div>
     <div class="agent"><h3>3 · Rerouting &amp; Logistics Agent</h3>
+      ${routeStrip(lg, disruption)}
       <div class="out">Action: ${esc(lg.recommended_action)} · route: ${esc(lg.recommended_route)} ·
-      revised ETA ${lg.revised_eta_days} d · ${money(lg.estimated_cost_usd)} (recommendation only)</div></div>
+      ${money(lg.estimated_cost_usd)} (recommendation only)</div></div>
     <div class="agent"><h3>4 · Inventory Rebalancing Agent</h3>
-      <div class="out">Reorder point ${inv.reorder_point} · projected ${inv.projected_inventory} · replenish <b>${inv.recommended_replenishment_units}</b> units (${money(inv.estimated_replenishment_cost_usd)})</div></div>
+      <div class="out">Reorder point ${inv.reorder_point} · projected ${inv.projected_inventory} ·
+      replenish <b>${inv.recommended_replenishment_units}</b> units (${money(inv.estimated_replenishment_cost_usd)})</div></div>
     <div class="agent"><h3>5 · Compliance &amp; Audit Agent</h3>
       <div class="out">${ca.flags.length ? ca.flags.map(esc).join('<br>') : 'No flags.'}<br>
       Report: ${esc(ca.report.outcome)} · ${esc(ca.report.policy)}</div></div>
@@ -246,7 +304,7 @@ $('btn-create').onclick = async () => {
     const d = await api('/api/disruptions', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
     });
-    lastDisruptionId = d.id;
+    lastDisruption = d;
     $('btn-analyze').disabled = false;
     $('results').innerHTML = `<p class="empty">Disruption #${d.id} created. Run the analysis.</p>`;
     refresh();
@@ -254,14 +312,14 @@ $('btn-create').onclick = async () => {
 };
 
 $('btn-analyze').onclick = async () => {
-  if (!lastDisruptionId) return;
+  if (!lastDisruption) return;
   try {
     const suppliers = parseSuppliers();
     const r = await api('/api/analyze', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ disruption_id: lastDisruptionId, suppliers }),
+      body: JSON.stringify({ disruption_id: lastDisruption.id, suppliers }),
     });
-    renderResult(r);
+    renderResult(r, lastDisruption);
     refresh();
   } catch (e) { $('results').innerHTML = `<p class="empty">Error: ${esc(e.message)}</p>`; }
 };
