@@ -7,7 +7,7 @@ import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
@@ -22,6 +22,7 @@ from models import (
     ScenarioRequest,
     SupplierRiskRequest,
 )
+from security import auth_enabled, require_api_key
 from signals import fetch_signals
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -84,7 +85,8 @@ def home():
         "app": "ChainGuard AI",
         "status": "online",
         "docs": "/docs",
-        "dashboard": "/dashboard"
+        "dashboard": "/dashboard",
+        "auth": "api-key" if auth_enabled() else "open",
     }
 
 
@@ -128,13 +130,13 @@ def orchestrator_status():
     return orchestrator.describe()
 
 
-@app.post("/api/orchestrator/cycle")
+@app.post("/api/orchestrator/cycle", dependencies=[Depends(require_api_key)])
 def orchestrator_cycle(limit: int = Query(5, ge=1, le=20)):
     """Run one autonomous cycle now: scan signals, act, notify. No human trigger."""
     return orchestrator.run_autonomous_cycle(limit=limit)
 
 
-@app.post("/api/disruptions")
+@app.post("/api/disruptions", dependencies=[Depends(require_api_key)])
 def create_disruption(request: DisruptionRequest):
     payload = request.model_dump()
 
@@ -191,7 +193,7 @@ def _load_disruption(disruption_id):
     }
 
 
-@app.post("/api/analyze")
+@app.post("/api/analyze", dependencies=[Depends(require_api_key)])
 def analyze(request: ScenarioRequest):
     disruption = None
 
@@ -283,7 +285,7 @@ def list_approvals(
     }
 
 
-@app.post("/api/approvals/{approval_id}/decision")
+@app.post("/api/approvals/{approval_id}/decision", dependencies=[Depends(require_api_key)])
 def decide_approval(
     approval_id: int,
     request: ApprovalDecision
@@ -356,7 +358,7 @@ def audit_logs(
     }
 
 
-@app.post("/api/suppliers/risk")
+@app.post("/api/suppliers/risk", dependencies=[Depends(require_api_key)])
 def supplier_risk(request: SupplierRiskRequest):
     disruption = None
 
@@ -384,11 +386,18 @@ ANALYSES_CSV_HEADER = [
 ]
 
 
+def _csv_safe(value):
+    """Neutralise spreadsheet formula injection (OWASP CSV injection)."""
+    if isinstance(value, str) and value[:1] in ("=", "+", "-", "@", "\t", "\r"):
+        return "'" + value
+    return value
+
+
 def _csv_response(header, rows, filename):
     buffer = io.StringIO()
     writer = csv.writer(buffer)
     writer.writerow(header)
-    writer.writerows(rows)
+    writer.writerows([[_csv_safe(cell) for cell in row] for row in rows])
     return Response(
         content=buffer.getvalue(),
         media_type="text/csv",
@@ -415,7 +424,7 @@ def list_alerts(
     }
 
 
-@app.post("/api/alerts/{alert_id}/ack")
+@app.post("/api/alerts/{alert_id}/ack", dependencies=[Depends(require_api_key)])
 def acknowledge_alert(alert_id: int):
     if not db.get_record("alerts", alert_id):
         raise HTTPException(status_code=404, detail="Alert not found")
@@ -461,7 +470,7 @@ def export_audit():
     )
 
 
-@app.post("/api/inventory/rebalance")
+@app.post("/api/inventory/rebalance", dependencies=[Depends(require_api_key)])
 def rebalance_inventory(request: ScenarioRequest):
     disruption = None
 

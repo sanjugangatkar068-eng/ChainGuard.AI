@@ -1,9 +1,15 @@
 const BASE = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+// Optional: sent as X-API-Key when the backend has API_KEY configured.
+const API_KEY = import.meta.env.VITE_API_KEY || "";
 
 async function request(path, { method = "GET", body } = {}) {
+  const headers = {};
+  if (body) headers["Content-Type"] = "application/json";
+  if (API_KEY) headers["X-API-Key"] = API_KEY;
+
   const response = await fetch(BASE + path, {
     method,
-    headers: body ? { "Content-Type": "application/json" } : undefined,
+    headers,
     body: body ? JSON.stringify(body) : undefined,
   });
 

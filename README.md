@@ -125,6 +125,8 @@ app runs on rules-based reasoning and default feeds.
 | --- | --- |
 | `APP_NAME` | Display name. |
 | `DATABASE_PATH` | SQLite file path; relative paths resolve to `backend/`. |
+| `API_KEY` | If set, all mutating requests must send a matching `X-API-Key` header. Empty = open (local only). |
+| `CORS_ORIGINS` | Comma-separated allowed browser origins (default: the Vite dev server). |
 | `LLM_PROVIDER` | `none` (default), `openai`, or `anthropic`. |
 | `LLM_API_KEY` | Provider API key. **Never commit this.** |
 | `LLM_MODEL` | Optional model override. |
@@ -146,6 +148,21 @@ falls back to a built-in offline sample, so demos never come back empty.
 required, the Escalation Agent raises an alert. Alerts are always recorded; they are
 also POSTed as JSON to `ALERT_WEBHOOK_URL` if one is set. Delivery is best-effort and
 never breaks the request. Alerts are acknowledgement-tracked via `/api/alerts`.
+
+## Security
+
+Optional API-key auth protects every mutating endpoint: set `API_KEY` and each `POST`
+must carry a matching `X-API-Key` header (compared with `secrets.compare_digest`).
+With `API_KEY` unset — the default — the API is open, which is fine locally but must
+not be exposed publicly.
+
+Other controls: Pydantic input bounds, parameterised SQL, **CSV formula-injection
+neutralisation** on the exports, JSX auto-escaping in the UI, no hardcoded secrets, and
+an audit event on every state change.
+
+See [`SECURITY.md`](SECURITY.md) for the full threat model, the controls in place, and
+the known limitations (no rate limiting, unencrypted SQLite, LLM prompt-injection
+surface, non-tamper-evident audit log).
 
 ## Code quality
 
@@ -277,7 +294,9 @@ curl -X POST http://127.0.0.1:8000/api/approvals/1/decision \
 ├── .editorconfig
 ├── .gitignore
 ├── .pre-commit-config.yaml
-├── .github/workflows/ci.yml
+├── .github
+│   ├── dependabot.yml      # weekly pip / npm / actions updates
+│   └── workflows/ci.yml
 ├── .vscode                 # shared debug, task and extension config
 │   ├── extensions.json
 │   ├── launch.json
@@ -286,6 +305,7 @@ curl -X POST http://127.0.0.1:8000/api/approvals/1/decision \
 ├── LICENSE
 ├── Makefile                # install / run / test / seed shortcuts
 ├── README.md
+├── SECURITY.md             # threat model, controls, known limitations
 ├── pyproject.toml          # ruff + pytest configuration
 ├── docs
 │   ├── ARCHITECTURE.md     # component map, data flow, data model

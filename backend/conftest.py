@@ -24,6 +24,9 @@ os.environ.pop("ALERT_WEBHOOK_URL", None)
 # Never start the autonomous background loop during tests.
 os.environ["ORCHESTRATOR_INTERVAL_SECONDS"] = "0"
 
+# Auth is opt-in; tests assume it is off unless a test enables it.
+os.environ.pop("API_KEY", None)
+
 import pytest  # noqa: E402
 
 import database as db  # noqa: E402
