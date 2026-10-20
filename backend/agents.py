@@ -1,6 +1,7 @@
 import json
 from math import ceil
 
+from alerting import min_level, should_alert
 from llm import LLMUnavailable, complete, is_configured
 
 # Keyword heuristics used to classify an incoming headline without an LLM.
@@ -308,6 +309,24 @@ def compliance_agent(sensing, scenarios, logistics):
     }
 
 
+def escalation_agent(sensing, compliance):
+    """Decide whether this assessment should be escalated to a human."""
+    level = sensing["risk_level"]
+    escalate = compliance["review_required"] and should_alert(level)
+
+    return {
+        "agent": "Escalation Agent",
+        "escalate": escalate,
+        "risk_level": level,
+        "threshold": min_level(),
+        "reason": (
+            "Risk at or above the alert threshold and review is required."
+            if escalate
+            else "Below the alert threshold or no review required."
+        ),
+    }
+
+
 EXPLANATION_SYSTEM = (
     "You are ChainGuard AI, a supply-chain resilience analyst. "
     "Given a JSON risk assessment, write a concise three-sentence rationale a "
@@ -396,5 +415,6 @@ def run_supply_chain_agents(disruption, params):
     if getattr(params, "suppliers", None):
         result["supplier_risk"] = supplier_risk_agent(params.suppliers, disruption)
 
+    result["escalation"] = escalation_agent(sensing, compliance)
     result["explanation"] = explanation_agent(result)
     return result

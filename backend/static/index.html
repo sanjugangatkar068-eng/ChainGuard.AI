@@ -142,7 +142,12 @@
   </div>
 
   <div class="card">
-    <h2>4 · Audit trail</h2>
+    <h2>4 · Escalation alerts</h2>
+    <div id="alerts"><p class="empty">No alerts yet.</p></div>
+  </div>
+
+  <div class="card">
+    <h2>5 · Audit trail</h2>
     <div id="audit"><p class="empty">No events yet.</p></div>
   </div>
 </main>
@@ -220,9 +225,10 @@ function routeStrip(lg, disruption) {
 
 // --- data loading ----------------------------------------------------------
 async function refresh() {
-  const [dash, appr, audit] = await Promise.all([
+  const [dash, appr, alerts, audit] = await Promise.all([
     api('/api/dashboard'),
     api('/api/approvals?limit=10'),
+    api('/api/alerts?limit=10'),
     api('/api/audit?limit=12'),
   ]);
   $('n-disruptions').textContent = dash.disruptions;
@@ -241,6 +247,18 @@ async function refresh() {
         : '<span class="muted">decided</span>'}</td>
     </tr>`).join('')}
     </tbody></table>` : '<p class="empty">No approvals yet.</p>';
+
+  $('alerts').innerHTML = alerts.items.length ? `
+    <table><thead><tr><th>ID</th><th>Level</th><th>Subject</th><th>Channel</th><th>Ack</th></tr></thead><tbody>
+    ${alerts.items.map((a) => `<tr>
+      <td>${a.id}</td>
+      <td><span class="pill ${a.level}">${a.level}</span></td>
+      <td>${esc(a.subject)}</td>
+      <td>${esc(a.channel)}${a.delivered ? ' ✓' : ''}</td>
+      <td>${a.acknowledged ? '<span class="muted">ack\u2019d</span>'
+        : `<button class="ghost" data-ack="${a.id}">Ack</button>`}</td>
+    </tr>`).join('')}
+    </tbody></table>` : '<p class="empty">No alerts yet.</p>';
 
   $('audit').innerHTML = audit.items.length ? `
     <table><thead><tr><th>Time</th><th>Event</th><th>Actor</th><th>Details</th></tr></thead><tbody>
@@ -290,8 +308,12 @@ function renderResult(r, disruption) {
     ${renderSupplierRisk(r.supplier_risk)}
     <div class="agent"><h3>Explanation</h3>
       <div class="out">${esc(r.explanation.explanation)} <span class="muted">(${esc(r.explanation.reasoning_source)})</span></div></div>
+    <div class="agent"><h3>Escalation Agent</h3>
+      <div class="out">Escalate: <b>${r.escalation.escalate ? 'YES' : 'no'}</b>
+      (threshold: ${esc(r.escalation.threshold)}) · ${esc(r.escalation.reason)}</div></div>
     <div class="agent"><h3>Human-in-the-loop</h3>
-      <div class="out">${r.human_approval_required ? 'Approval requested — see section 3.' : 'No approval required.'}</div></div>`;
+      <div class="out">${r.human_approval_required ? 'Approval requested — see section 3.' : 'No approval required.'}
+      ${r.alert_id ? '· alert #' + r.alert_id + ' raised (section 4).' : ''}</div></div>`;
 }
 
 $('btn-create').onclick = async () => {
@@ -327,12 +349,17 @@ $('btn-analyze').onclick = async () => {
 document.addEventListener('click', async (ev) => {
   const a = ev.target.getAttribute?.('data-approve');
   const rj = ev.target.getAttribute?.('data-reject');
-  if (!a && !rj) return;
+  const ack = ev.target.getAttribute?.('data-ack');
+  if (!a && !rj && !ack) return;
   try {
-    await api(`/api/approvals/${a || rj}/decision`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ decision: a ? 'approve' : 'reject', reviewer: 'dashboard', comments: 'from dashboard' }),
-    });
+    if (ack) {
+      await api(`/api/alerts/${ack}/ack`, { method: 'POST' });
+    } else {
+      await api(`/api/approvals/${a || rj}/decision`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ decision: a ? 'approve' : 'reject', reviewer: 'dashboard', comments: 'from dashboard' }),
+      });
+    }
     refresh();
   } catch (e) { alert(e.message); }
 });

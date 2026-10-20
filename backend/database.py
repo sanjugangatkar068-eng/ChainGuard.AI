@@ -79,6 +79,18 @@ def init_db() -> None:
             actor TEXT,
             details TEXT
         );
+
+        CREATE TABLE IF NOT EXISTS alerts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            created_at TEXT,
+            level TEXT,
+            subject TEXT,
+            message TEXT,
+            channel TEXT,
+            delivered INTEGER DEFAULT 0,
+            acknowledged INTEGER DEFAULT 0,
+            details TEXT
+        );
         """)
 
 
@@ -144,6 +156,14 @@ def decide_approval(approval_id, status, reviewer, comments) -> bool:
                 (status, row["analysis_id"]),
             )
         return True
+
+
+def ack_alert(alert_id) -> None:
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE alerts SET acknowledged=1 WHERE id=?",
+            (alert_id,),
+        )
 
 
 def log_event(event_type, actor, details):

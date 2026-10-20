@@ -10,7 +10,7 @@ select = ["E", "F", "I", "UP", "B"]
 ignore = ["E501"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["agents", "database", "llm", "models", "seed", "signals"]
+known-first-party = ["agents", "alerting", "database", "llm", "models", "seed", "signals"]
 
 [tool.pytest.ini_options]
 addopts = "-q"

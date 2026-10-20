@@ -57,6 +57,7 @@ a clear role, defined inputs/outputs, and an explicit handoff point.
 | Inventory Rebalancing | disruption + parameters | reorder point, projected stock, replenishment units |
 | Supplier Risk | supplier network | per-supplier risk score, spend share, concentration flag |
 | Compliance & Audit | sensing + scenarios + logistics | flags, report, `review_required` |
+| Escalation | sensing + compliance | whether to alert, threshold, reason |
 | Explanation | the whole result | plain-language rationale (`llm` or `rules`) |
 
 ## Request flow (`POST /api/analyze`)
@@ -78,6 +79,7 @@ a clear role, defined inputs/outputs, and an explicit handoff point.
 | `analyses` | id, created_at, disruption_id, payload (JSON), status |
 | `approvals` | id, created_at, analysis_id, status, reviewer, comments, decided_at |
 | `audit_logs` | id, created_at, event_type, actor, details (JSON) |
+| `alerts` | id, created_at, level, subject, message, channel, delivered, acknowledged, details (JSON) |
 
 Connections are opened per operation through a `get_conn()` context manager that
 commits on success, rolls back on error, and always closes.

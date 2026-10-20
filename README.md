@@ -21,6 +21,7 @@ logging everything to an audit trail. A zero-build demo dashboard ships with it.
 | Inventory Rebalancing Agent | Recomputes reorder point and replenishment needs. |
 | Supplier Risk Agent | Scores suppliers by exposure and flags sourcing concentration (multi-tier visibility). |
 | Compliance & Audit Agent | Flags high-risk cases and budget breaches; produces a compliance report. |
+| Escalation Agent | Raises an alert when risk meets the configured threshold and review is required. |
 | Explanation Agent | Narrates the assessment in plain language (LLM if configured, else rules). |
 | Human-in-the-loop | A reviewer approves or rejects high-risk recommendations. |
 
@@ -67,6 +68,8 @@ app runs on rules-based reasoning and default feeds.
 | `LLM_MODEL` | Optional model override. |
 | `LLM_BASE_URL` | Optional base URL (for OpenAI-compatible endpoints). |
 | `SIGNAL_FEEDS` | Comma-separated RSS/Atom feed URLs. |
+| `ALERT_MIN_LEVEL` | Risk level at which to escalate (`low`/`medium`/`high`/`critical`, default `high`). |
+| `ALERT_WEBHOOK_URL` | Optional webhook to POST alerts to; if empty, alerts are recorded with channel `log`. |
 
 **LLM reasoning is optional.** With `LLM_PROVIDER=none` (or no key), the Explanation
 Agent uses a deterministic template, so the app always works. Set a provider and key
@@ -76,6 +79,11 @@ never hardcoded.
 **Signals.** The Disruption Sensing Agent pulls headlines from `SIGNAL_FEEDS` (default:
 Google News RSS queries on supply-chain disruptions). If every feed is unreachable it
 falls back to a built-in offline sample, so demos never come back empty.
+
+**Alerts.** When a disruption's risk level meets `ALERT_MIN_LEVEL` and human review is
+required, the Escalation Agent raises an alert. Alerts are always recorded; they are
+also POSTed as JSON to `ALERT_WEBHOOK_URL` if one is set. Delivery is best-effort and
+never breaks the request. Alerts are acknowledgement-tracked via `/api/alerts`.
 
 ## Code quality
 
@@ -146,6 +154,8 @@ docker run -p 8000:8000 chainguard-ai
 | GET | `/api/approvals` | List approval requests (`limit`, `offset`). |
 | POST | `/api/approvals/{id}/decision` | Approve or reject a request. |
 | GET | `/api/audit` | Read the audit log (`limit`, `offset`). |
+| GET | `/api/alerts` | List escalation alerts (`limit`, `offset`). |
+| POST | `/api/alerts/{id}/ack` | Acknowledge an alert. |
 | GET | `/api/export/analyses.csv` | Download all analyses as a CSV report. |
 | GET | `/api/export/audit.csv` | Download the audit trail as a CSV report. |
 | POST | `/api/suppliers/risk` | Score a supplier network for exposure and concentration. |

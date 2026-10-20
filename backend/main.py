@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 
+import alerting
 import database as db
 from agents import (
     run_supply_chain_agents,
@@ -153,6 +154,17 @@ def analyze(request: ScenarioRequest):
         disruption = _load_disruption(request.disruption_id)
 
     result = run_supply_chain_agents(disruption, request)
+
+    if result["escalation"]["escalate"]:
+        result["alert_id"] = alerting.dispatch(
+            subject=f"{result['disruption_sensing']['risk_level']} disruption",
+            message=result["explanation"]["explanation"],
+            level=result["disruption_sensing"]["risk_level"],
+            context={
+                "disruption_id": request.disruption_id,
+                "recommended_action": result["logistics"]["recommended_action"],
+            },
+        )
 
     analysis_id = db.add_record(
         "analyses",
@@ -337,6 +349,36 @@ def _csv_response(header, rows, filename):
         media_type="text/csv",
         headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
+
+
+@app.get("/api/alerts")
+def list_alerts(
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0)
+):
+    records = db.list_records("alerts", limit, offset)
+    for record in records:
+        record["details"] = json.loads(record["details"])
+        record["delivered"] = bool(record["delivered"])
+        record["acknowledged"] = bool(record["acknowledged"])
+
+    return {
+        "items": records,
+        "total": db.count_records("alerts"),
+        "limit": limit,
+        "offset": offset,
+    }
+
+
+@app.post("/api/alerts/{alert_id}/ack")
+def acknowledge_alert(alert_id: int):
+    if not db.get_record("alerts", alert_id):
+        raise HTTPException(status_code=404, detail="Alert not found")
+
+    db.ack_alert(alert_id)
+    db.log_event("alert_acknowledged", "user", {"alert_id": alert_id})
+
+    return {"alert_id": alert_id, "acknowledged": True}
 
 
 @app.get("/api/export/analyses.csv")

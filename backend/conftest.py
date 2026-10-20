@@ -17,6 +17,10 @@ os.environ["LLM_PROVIDER"] = "none"
 os.environ.pop("LLM_API_KEY", None)
 os.environ.pop("SIGNAL_FEEDS", None)
 
+# Alerts: deterministic threshold, never call a real webhook in tests.
+os.environ["ALERT_MIN_LEVEL"] = "high"
+os.environ.pop("ALERT_WEBHOOK_URL", None)
+
 import pytest  # noqa: E402
 
 import database as db  # noqa: E402
@@ -27,6 +31,8 @@ def clean_db():
     """Start every test from an empty schema."""
     db.init_db()
     with db.get_conn() as conn:
-        for table in ("disruptions", "analyses", "approvals", "audit_logs"):
+        for table in ("disruptions", "analyses", "approvals", "audit_logs", "alerts"):
             conn.execute(f"DELETE FROM {table}")
+        # Reset AUTOINCREMENT so ids are deterministic across tests.
+        conn.execute("DELETE FROM sqlite_sequence")
     yield
