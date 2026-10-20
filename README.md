@@ -25,6 +25,10 @@ logging everything to an audit trail. A zero-build demo dashboard ships with it.
 | Explanation Agent | Narrates the assessment in plain language (LLM if configured, else rules). |
 | Human-in-the-loop | A reviewer approves or rejects high-risk recommendations. |
 
+See [`docs/REFERENCES.md`](docs/REFERENCES.md) for how these map to the hackathon
+theme's agent roles, an honest note on where this implementation differs, and a
+comparison with related open-source projects.
+
 ## Requirements
 
 - Python 3.12+
@@ -246,7 +250,8 @@ curl -X POST http://127.0.0.1:8000/api/approvals/1/decision \
 ├── README.md
 ├── pyproject.toml          # ruff + pytest configuration
 ├── docs
-│   └── ARCHITECTURE.md     # component map, data flow, data model
+│   ├── ARCHITECTURE.md     # component map, data flow, data model
+│   └── REFERENCES.md       # theme alignment + related projects
 ├── backend
     ├── main.py             # FastAPI app and routes
     ├── agents.py           # agent pipeline + classification
@@ -275,7 +280,8 @@ curl -X POST http://127.0.0.1:8000/api/approvals/1/decision \
         └── components/     # StatCards, DisruptionForm, PipelineResult, ...
 ```
 
-See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the component map and data flow.
+See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the component map and data flow,
+and [`docs/REFERENCES.md`](docs/REFERENCES.md) for theme alignment and related work.
 
 ## Notes
 
