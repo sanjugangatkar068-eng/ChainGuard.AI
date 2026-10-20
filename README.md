@@ -77,6 +77,15 @@ never hardcoded.
 Google News RSS queries on supply-chain disruptions). If every feed is unreachable it
 falls back to a built-in offline sample, so demos never come back empty.
 
+## Code quality
+
+- **Ruff** config lives in `pyproject.toml` (also holds the pytest options). Run
+  `ruff check backend`.
+- **Pre-commit** hooks (`.pre-commit-config.yaml`) run Ruff and basic hygiene checks.
+  Enable once with `pre-commit install`; refresh versions with `pre-commit autoupdate`.
+- A **Makefile** offers `make install`, `make run`, `make test`, `make seed`, `make lint`
+  and `make clean` (use Git Bash or WSL on Windows).
+
 ## VS Code
 
 Open the repository folder in VS Code and you get, out of the box:
@@ -137,6 +146,8 @@ docker run -p 8000:8000 chainguard-ai
 | GET | `/api/approvals` | List approval requests (`limit`, `offset`). |
 | POST | `/api/approvals/{id}/decision` | Approve or reject a request. |
 | GET | `/api/audit` | Read the audit log (`limit`, `offset`). |
+| GET | `/api/export/analyses.csv` | Download all analyses as a CSV report. |
+| GET | `/api/export/audit.csv` | Download the audit trail as a CSV report. |
 | POST | `/api/suppliers/risk` | Score a supplier network for exposure and concentration. |
 | POST | `/api/inventory/rebalance` | Inventory recommendation only. |
 
@@ -179,6 +190,7 @@ curl -X POST http://127.0.0.1:8000/api/approvals/1/decision \
 ├── .dockerignore
 ├── .editorconfig
 ├── .gitignore
+├── .pre-commit-config.yaml
 ├── .github/workflows/ci.yml
 ├── .vscode                 # shared debug, task and extension config
 │   ├── extensions.json
@@ -186,7 +198,9 @@ curl -X POST http://127.0.0.1:8000/api/approvals/1/decision \
 │   ├── settings.json
 │   └── tasks.json
 ├── LICENSE
+├── Makefile                # install / run / test / seed shortcuts
 ├── README.md
+├── pyproject.toml          # ruff + pytest configuration
 ├── docs
 │   └── ARCHITECTURE.md     # component map, data flow, data model
 └── backend

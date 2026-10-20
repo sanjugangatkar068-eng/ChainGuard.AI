@@ -1,6 +1,6 @@
+import main
 from fastapi.testclient import TestClient
 
-import main
 from agents import (
     disruption_sensing,
     logistics_agent,

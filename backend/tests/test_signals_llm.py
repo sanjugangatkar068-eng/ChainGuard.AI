@@ -1,8 +1,8 @@
 import httpx
+import main
 import pytest
 from fastapi.testclient import TestClient
 
-import main
 import signals
 from agents import (
     classify_signal,

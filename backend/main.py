@@ -1,8 +1,11 @@
+import csv
+import io
 import json
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 
 import database as db
@@ -11,13 +14,13 @@ from agents import (
     signal_ingestion_agent,
     supplier_risk_agent,
 )
-from signals import fetch_signals
 from models import (
+    ApprovalDecision,
     DisruptionRequest,
     ScenarioRequest,
     SupplierRiskRequest,
-    ApprovalDecision
 )
+from signals import fetch_signals
 
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
@@ -315,6 +318,60 @@ def supplier_risk(request: SupplierRiskRequest):
     )
 
     return result
+
+
+ANALYSES_CSV_HEADER = [
+    "analysis_id", "created_at", "disruption_id", "status",
+    "risk_level", "risk_score", "recommended_action",
+    "extra_cost_usd", "replenishment_units", "human_approval_required",
+]
+
+
+def _csv_response(header, rows, filename):
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(header)
+    writer.writerows(rows)
+    return Response(
+        content=buffer.getvalue(),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+
+@app.get("/api/export/analyses.csv")
+def export_analyses():
+    rows = []
+    for record in db.list_records("analyses", 10000):
+        payload = json.loads(record["payload"])
+        sensing = payload.get("disruption_sensing", {})
+        recommended = payload.get("scenario_planning", {}).get(
+            "recommended_scenario", {})
+        logistics = payload.get("logistics", {})
+        inventory = payload.get("inventory", {})
+
+        rows.append([
+            record["id"], record["created_at"], record["disruption_id"],
+            record["status"], sensing.get("risk_level"),
+            sensing.get("risk_score"), logistics.get("recommended_action"),
+            recommended.get("extra_cost_usd"),
+            inventory.get("recommended_replenishment_units"),
+            payload.get("human_approval_required"),
+        ])
+
+    return _csv_response(ANALYSES_CSV_HEADER, rows, "chainguard_analyses.csv")
+
+
+@app.get("/api/export/audit.csv")
+def export_audit():
+    rows = [
+        [r["id"], r["created_at"], r["event_type"], r["actor"], r["details"]]
+        for r in db.list_records("audit_logs", 10000)
+    ]
+    return _csv_response(
+        ["id", "created_at", "event_type", "actor", "details"],
+        rows, "chainguard_audit.csv",
+    )
 
 
 @app.post("/api/inventory/rebalance")

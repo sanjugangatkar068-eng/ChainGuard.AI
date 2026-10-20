@@ -1,4 +1,5 @@
-from typing import Literal, Optional
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -27,14 +28,14 @@ class DisruptionRequest(BaseModel):
     location: str
     severity: Literal["low", "medium", "high", "critical"] = "medium"
     description: str = ""
-    affected_supplier: Optional[str] = None
+    affected_supplier: str | None = None
     delay_days: int = Field(default=5, ge=0, le=90)
     tariff_percent: float = Field(default=0, ge=0, le=500)
     estimated_loss_usd: float = Field(default=0, ge=0)
 
 
 class ScenarioRequest(BaseModel):
-    disruption_id: Optional[int] = None
+    disruption_id: int | None = None
     demand_units_per_day: int = Field(default=20, ge=0)
     current_inventory: int = Field(default=240, ge=0)
     lead_time_days: int = Field(default=4, ge=0)
@@ -47,7 +48,7 @@ class ScenarioRequest(BaseModel):
 
 
 class SupplierRiskRequest(BaseModel):
-    disruption_id: Optional[int] = None
+    disruption_id: int | None = None
     suppliers: list[Supplier] = Field(default_factory=list)
 
 

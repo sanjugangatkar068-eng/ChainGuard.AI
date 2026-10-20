@@ -320,7 +320,6 @@ EXPLANATION_SYSTEM = (
 def _rule_based_explanation(result):
     sensing = result["disruption_sensing"]
     planning = result["scenario_planning"]
-    logistics = result["logistics"]
     inventory = result["inventory"]
     recommended = planning["recommended_scenario"]
 

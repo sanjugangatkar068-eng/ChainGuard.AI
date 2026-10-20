@@ -1,7 +1,7 @@
+import main
 from fastapi.testclient import TestClient
 
-import main
-from agents import disruption_sensing, scenario_planning, run_supply_chain_agents
+from agents import disruption_sensing, run_supply_chain_agents, scenario_planning
 from models import ScenarioRequest
 
 client = TestClient(main.app)
