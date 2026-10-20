@@ -15,11 +15,12 @@ logging everything to an audit trail. A zero-build demo dashboard ships with it.
 
 | Agent | Role |
 | --- | --- |
-| Disruption Sensing Agent | Ingests RSS/Atom feeds, classifies headlines, and scores a disruption's severity. |
+| Disruption Sensing Agent | Ingests RSS/Atom feeds, classifies headlines, and scores severity with a confidence and source. |
 | Scenario Planning Agent | Compares wait / reroute / expedite options on cost and delay, within budget. |
-| Rerouting & Logistics Agent | Turns the chosen scenario into a concrete recommended action. |
+| Rerouting & Logistics Agent | Turns the chosen scenario into a route, revised ETA and cost. |
 | Inventory Rebalancing Agent | Recomputes reorder point and replenishment needs. |
-| Compliance & Audit Agent | Flags high-risk cases and budget breaches; decides if human approval is required. |
+| Supplier Risk Agent | Scores suppliers by exposure and flags sourcing concentration (multi-tier visibility). |
+| Compliance & Audit Agent | Flags high-risk cases and budget breaches; produces a compliance report. |
 | Explanation Agent | Narrates the assessment in plain language (LLM if configured, else rules). |
 | Human-in-the-loop | A reviewer approves or rejects high-risk recommendations. |
 
@@ -107,10 +108,15 @@ docker run -p 8000:8000 chainguard-ai
 | GET | `/api/approvals` | List approval requests (`limit`, `offset`). |
 | POST | `/api/approvals/{id}/decision` | Approve or reject a request. |
 | GET | `/api/audit` | Read the audit log (`limit`, `offset`). |
+| POST | `/api/suppliers/risk` | Score a supplier network for exposure and concentration. |
 | POST | `/api/inventory/rebalance` | Inventory recommendation only. |
 
 List endpoints accept `limit` (1–500, default 50) and `offset` (default 0) and return
 `{ items, total, limit, offset }`.
+
+`POST /api/analyze` accepts an optional `suppliers` array (each: `name`, `tier`,
+`country`, `single_source`, `lead_time_days`, `spend_usd`). When present, the response
+includes a `supplier_risk` block from the Supplier Risk agent.
 
 ## Quick example
 

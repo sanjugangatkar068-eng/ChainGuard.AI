@@ -19,6 +19,23 @@ KEYWORD_MAP = {
     "demand_spike": ["surge", "spike", "demand", "stockout"],
 }
 
+# Illustrative response routes per recommended action.
+ROUTE_BY_ACTION = {
+    "wait": "Existing route (monitor)",
+    "reroute": "Alternate corridor diversion",
+    "expedite": "Air freight / alternate supplier lane",
+}
+
+
+def _risk_level(score):
+    if score >= 80:
+        return "critical"
+    if score >= 60:
+        return "high"
+    if score >= 35:
+        return "medium"
+    return "low"
+
 
 def classify_signal(text):
     """Map free text to a disruption_type using keyword heuristics."""
@@ -65,21 +82,22 @@ def disruption_sensing(disruption):
     score = severity_scores.get(severity, 45)
     score = min(100, score + delay_days)
 
-    if score >= 80:
-        level = "critical"
-    elif score >= 60:
-        level = "high"
-    elif score >= 35:
-        level = "medium"
-    else:
-        level = "low"
+    # Confidence rises as more of the record is populated.
+    confidence = 0.6
+    if delay_days > 0:
+        confidence += 0.2
+    if disruption.get("estimated_loss_usd", 0):
+        confidence += 0.2
+    confidence = round(min(1.0, confidence), 2)
 
     return {
         "agent": "Disruption Sensing Agent",
         "risk_score": score,
-        "risk_level": level,
+        "risk_level": _risk_level(score),
+        "confidence": confidence,
         "disruption_type": disruption.get("disruption_type", "other"),
         "location": disruption.get("location", "Unknown"),
+        "source": "user-provided demo data",
         "signals": [
             disruption.get("title", "Manual scenario"),
             f"Delay: {delay_days} days",
@@ -167,8 +185,10 @@ def logistics_agent(scenario_result):
     return {
         "agent": "Rerouting & Logistics Agent",
         "recommended_action": selected["id"],
+        "recommended_route": ROUTE_BY_ACTION.get(selected["id"], "Existing route"),
         "estimated_cost_usd": selected["extra_cost_usd"],
         "estimated_delay_days": selected["delay_days"],
+        "revised_eta_days": selected["delay_days"],
         "execution_status": "recommendation_only",
         "next_steps": [
             "Verify route and carrier availability",
@@ -211,6 +231,51 @@ def inventory_agent(disruption, params):
     }
 
 
+def supplier_risk_agent(suppliers, disruption=None):
+    """Score suppliers for exposure and flag sourcing concentration."""
+    total_spend = sum(s.spend_usd for s in suppliers) or 1.0
+    location = (disruption or {}).get("location", "") or ""
+
+    items = []
+    for supplier in suppliers:
+        score = 0
+        if supplier.single_source:
+            score += 40
+        score += min(20, supplier.lead_time_days)
+        score += (supplier.tier - 1) * 5
+        if location and supplier.country.lower() == location.lower():
+            score += 20
+        score = min(100, score)
+
+        items.append({
+            "name": supplier.name,
+            "tier": supplier.tier,
+            "country": supplier.country,
+            "single_source": supplier.single_source,
+            "spend_share_pct": round(100 * supplier.spend_usd / total_spend, 1),
+            "risk_score": score,
+            "risk_level": _risk_level(score),
+        })
+
+    items.sort(key=lambda i: i["risk_score"], reverse=True)
+
+    top = max(items, key=lambda i: i["spend_share_pct"]) if items else None
+    concentration_risk = bool(top and top["spend_share_pct"] >= 40)
+
+    return {
+        "agent": "Supplier Risk Agent",
+        "suppliers": items,
+        "concentration_risk": concentration_risk,
+        "top_supplier": top["name"] if top else None,
+        "highest_risk_supplier": items[0]["name"] if items else None,
+        "recommendation": (
+            "Diversify sourcing away from the dominant supplier."
+            if concentration_risk
+            else "Spend is reasonably distributed across suppliers."
+        ),
+    }
+
+
 def compliance_agent(sensing, scenarios, logistics):
     flags = []
 
@@ -227,11 +292,19 @@ def compliance_agent(sensing, scenarios, logistics):
     ):
         flags.append("All scenarios exceed the configured budget.")
 
+    review_required = bool(flags)
+
     return {
         "agent": "Compliance & Audit Agent",
-        "review_required": bool(flags),
+        "review_required": review_required,
         "flags": flags,
-        "decision_logged": True
+        "decision_logged": True,
+        "report": {
+            "risk_level": sensing["risk_level"],
+            "policy": "recommendation-only; no autonomous external action",
+            "review_required": review_required,
+            "outcome": "pending human approval" if review_required else "auto-cleared",
+        },
     }
 
 
@@ -260,7 +333,7 @@ def _rule_based_explanation(result):
     return (
         f"Detected a {sensing['risk_level']}-risk "
         f"{sensing['disruption_type']} at {sensing['location']} "
-        f"(score {sensing['risk_score']}/100). "
+        f"(score {sensing['risk_score']}/100, confidence {sensing['confidence']}). "
         f"The scenario planner recommends '{recommended['name']}' at about "
         f"${recommended['extra_cost_usd']:,.0f} extra cost and "
         f"{recommended['delay_days']} days' delay, with "
@@ -320,6 +393,9 @@ def run_supply_chain_agents(disruption, params):
         "compliance_audit": compliance,
         "human_approval_required": compliance["review_required"]
     }
+
+    if getattr(params, "suppliers", None):
+        result["supplier_risk"] = supplier_risk_agent(params.suppliers, disruption)
 
     result["explanation"] = explanation_agent(result)
     return result

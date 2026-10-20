@@ -6,11 +6,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 import database as db
-from agents import run_supply_chain_agents, signal_ingestion_agent
+from agents import (
+    run_supply_chain_agents,
+    signal_ingestion_agent,
+    supplier_risk_agent,
+)
 from signals import fetch_signals
 from models import (
     DisruptionRequest,
     ScenarioRequest,
+    SupplierRiskRequest,
     ApprovalDecision
 )
 
@@ -289,6 +294,27 @@ def audit_logs(
         "limit": limit,
         "offset": offset
     }
+
+
+@app.post("/api/suppliers/risk")
+def supplier_risk(request: SupplierRiskRequest):
+    disruption = None
+
+    if request.disruption_id is not None:
+        disruption = _load_disruption(request.disruption_id)
+
+    result = supplier_risk_agent(request.suppliers, disruption)
+
+    db.log_event(
+        "supplier_risk_assessed",
+        "system",
+        {
+            "count": len(request.suppliers),
+            "concentration_risk": result["concentration_risk"],
+        }
+    )
+
+    return result
 
 
 @app.post("/api/inventory/rebalance")

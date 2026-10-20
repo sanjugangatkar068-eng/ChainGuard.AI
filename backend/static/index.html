@@ -34,6 +34,7 @@
     width: 100%; padding: 8px 10px; background: var(--panel2); color: var(--ink);
     border: 1px solid var(--line); border-radius: 8px; font: inherit;
   }
+  textarea { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12.5px; }
   .row { display: flex; gap: 12px; }
   .row > div { flex: 1; }
   button {
@@ -111,6 +112,12 @@
         <div><label for="delay">Delay (days)</label><input id="delay" type="number" value="14" /></div>
         <div><label for="loss">Est. loss (USD)</label><input id="loss" type="number" value="50000" /></div>
       </div>
+      <label for="suppliers">Suppliers (optional JSON — feeds the Supplier Risk agent)</label>
+      <textarea id="suppliers" rows="5">[
+  {"name":"Apex Components","tier":1,"country":"China","single_source":true,"lead_time_days":21,"spend_usd":120000},
+  {"name":"Baltic Metals","tier":2,"country":"Poland","single_source":false,"lead_time_days":12,"spend_usd":40000},
+  {"name":"Deccan Plastics","tier":1,"country":"India","single_source":false,"lead_time_days":9,"spend_usd":60000}
+]</textarea>
       <button id="btn-create">Create disruption</button>
       <button id="btn-analyze" class="ghost" disabled>Run agent analysis</button>
     </div>
@@ -140,7 +147,16 @@ const api = (path, opts) => fetch(path, opts).then(async (r) => {
   return body;
 });
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const money = (n) => '$' + Number(n).toLocaleString();
 let lastDisruptionId = null;
+
+function parseSuppliers() {
+  const raw = $('suppliers').value.trim();
+  if (!raw) return [];
+  const parsed = JSON.parse(raw);
+  if (!Array.isArray(parsed)) throw new Error('Suppliers must be a JSON array');
+  return parsed;
+}
 
 async function refresh() {
   const [dash, appr, audit] = await Promise.all([
@@ -175,27 +191,47 @@ async function refresh() {
     </tbody></table>` : '<p class="empty">No events yet.</p>';
 }
 
+function renderSupplierRisk(sr) {
+  if (!sr) return '';
+  const rows = sr.suppliers.map((s) => `<tr>
+    <td>${esc(s.name)}</td><td>T${s.tier}</td><td>${esc(s.country)}</td>
+    <td>${s.single_source ? 'yes' : 'no'}</td>
+    <td>${s.spend_share_pct}%</td>
+    <td><span class="pill ${s.risk_level}">${s.risk_level}</span> (${s.risk_score})</td>
+  </tr>`).join('');
+  return `<div class="agent"><h3>6 · Supplier Risk Agent</h3>
+    <table><thead><tr><th>Supplier</th><th>Tier</th><th>Country</th><th>Sole src</th><th>Spend</th><th>Risk</th></tr></thead>
+    <tbody>${rows}</tbody></table>
+    <div class="out">Concentration risk: <b>${sr.concentration_risk ? 'YES' : 'no'}</b> · ${esc(sr.recommendation)}</div></div>`;
+}
+
 function renderResult(r) {
   const s = r.disruption_sensing, sc = r.scenario_planning, lg = r.logistics,
         inv = r.inventory, ca = r.compliance_audit;
   const scen = sc.scenarios.map((x) => `<tr>
-    <td>${esc(x.name)}</td><td>$${x.extra_cost_usd.toLocaleString()}</td>
+    <td>${esc(x.name)}</td><td>${money(x.extra_cost_usd)}</td>
     <td>${x.delay_days} d</td><td><span class="pill ${x.risk}">${x.risk}</span></td>
     <td>${x.within_budget ? 'yes' : '<span class="muted">over budget</span>'}</td>
   </tr>`).join('');
   $('results').innerHTML = `
     <div class="agent"><h3>1 · Disruption Sensing Agent</h3>
-      <div class="out">Risk <span class="pill ${s.risk_level}">${s.risk_level}</span> (score ${s.risk_score}) · ${esc(s.disruption_type)} at ${esc(s.location)}</div></div>
+      <div class="out">Risk <span class="pill ${s.risk_level}">${s.risk_level}</span> (score ${s.risk_score}) ·
+      confidence ${s.confidence} · ${esc(s.disruption_type)} at ${esc(s.location)} · source: ${esc(s.source)}</div></div>
     <div class="agent"><h3>2 · Scenario Planning Agent</h3>
       <table><thead><tr><th>Option</th><th>Cost</th><th>Delay</th><th>Risk</th><th>Budget</th></tr></thead>
       <tbody>${scen}</tbody></table>
       <div class="out">Recommended: <b>${esc(sc.recommended_scenario.name)}</b></div></div>
     <div class="agent"><h3>3 · Rerouting &amp; Logistics Agent</h3>
-      <div class="out">Action: ${esc(lg.recommended_action)} · $${lg.estimated_cost_usd.toLocaleString()} · ETA ${lg.estimated_delay_days} d (recommendation only)</div></div>
+      <div class="out">Action: ${esc(lg.recommended_action)} · route: ${esc(lg.recommended_route)} ·
+      revised ETA ${lg.revised_eta_days} d · ${money(lg.estimated_cost_usd)} (recommendation only)</div></div>
     <div class="agent"><h3>4 · Inventory Rebalancing Agent</h3>
-      <div class="out">Reorder point ${inv.reorder_point} · projected ${inv.projected_inventory} · replenish <b>${inv.recommended_replenishment_units}</b> units ($${inv.estimated_replenishment_cost_usd.toLocaleString()})</div></div>
+      <div class="out">Reorder point ${inv.reorder_point} · projected ${inv.projected_inventory} · replenish <b>${inv.recommended_replenishment_units}</b> units (${money(inv.estimated_replenishment_cost_usd)})</div></div>
     <div class="agent"><h3>5 · Compliance &amp; Audit Agent</h3>
-      <div class="out">${ca.flags.length ? ca.flags.map(esc).join('<br>') : 'No flags.'}</div></div>
+      <div class="out">${ca.flags.length ? ca.flags.map(esc).join('<br>') : 'No flags.'}<br>
+      Report: ${esc(ca.report.outcome)} · ${esc(ca.report.policy)}</div></div>
+    ${renderSupplierRisk(r.supplier_risk)}
+    <div class="agent"><h3>Explanation</h3>
+      <div class="out">${esc(r.explanation.explanation)} <span class="muted">(${esc(r.explanation.reasoning_source)})</span></div></div>
     <div class="agent"><h3>Human-in-the-loop</h3>
       <div class="out">${r.human_approval_required ? 'Approval requested — see section 3.' : 'No approval required.'}</div></div>`;
 }
@@ -220,9 +256,10 @@ $('btn-create').onclick = async () => {
 $('btn-analyze').onclick = async () => {
   if (!lastDisruptionId) return;
   try {
+    const suppliers = parseSuppliers();
     const r = await api('/api/analyze', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ disruption_id: lastDisruptionId }),
+      body: JSON.stringify({ disruption_id: lastDisruptionId, suppliers }),
     });
     renderResult(r);
     refresh();

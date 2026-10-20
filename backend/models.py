@@ -2,6 +2,15 @@ from typing import Literal, Optional
 from pydantic import BaseModel, Field
 
 
+class Supplier(BaseModel):
+    name: str = Field(min_length=2, max_length=120)
+    tier: int = Field(default=1, ge=1, le=5)
+    country: str = "Unknown"
+    single_source: bool = False
+    lead_time_days: int = Field(default=14, ge=0, le=365)
+    spend_usd: float = Field(default=0, ge=0)
+
+
 class DisruptionRequest(BaseModel):
     title: str = Field(min_length=3, max_length=160)
 
@@ -34,6 +43,12 @@ class ScenarioRequest(BaseModel):
     expedite_cost_usd: float = Field(default=500, ge=0)
     reroute_cost_usd: float = Field(default=1200, ge=0)
     max_budget_usd: float = Field(default=10000, ge=0)
+    suppliers: list[Supplier] = Field(default_factory=list)
+
+
+class SupplierRiskRequest(BaseModel):
+    disruption_id: Optional[int] = None
+    suppliers: list[Supplier] = Field(default_factory=list)
 
 
 class ApprovalDecision(BaseModel):
