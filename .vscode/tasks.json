@@ -2,7 +2,7 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Install dependencies",
+      "label": "Backend: install dependencies",
       "type": "shell",
       "command": "pip install -r requirements-dev.txt",
       "options": {
@@ -11,7 +11,7 @@
       "problemMatcher": []
     },
     {
-      "label": "Run server",
+      "label": "Backend: run server",
       "type": "shell",
       "command": "uvicorn main:app --reload --port 8000",
       "options": {
@@ -21,7 +21,7 @@
       "problemMatcher": []
     },
     {
-      "label": "Run tests",
+      "label": "Backend: run tests",
       "type": "shell",
       "command": "pytest -q",
       "options": {
@@ -34,12 +34,50 @@
       "problemMatcher": []
     },
     {
-      "label": "Seed demo data",
+      "label": "Backend: seed demo data",
       "type": "shell",
       "command": "python seed.py --reset",
       "options": {
         "cwd": "${workspaceFolder}/backend"
       },
+      "problemMatcher": []
+    },
+    {
+      "label": "Frontend: install dependencies",
+      "type": "shell",
+      "command": "npm install",
+      "options": {
+        "cwd": "${workspaceFolder}/frontend"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Frontend: run dev server",
+      "type": "shell",
+      "command": "npm run dev",
+      "options": {
+        "cwd": "${workspaceFolder}/frontend"
+      },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Frontend: run tests",
+      "type": "shell",
+      "command": "npm test",
+      "options": {
+        "cwd": "${workspaceFolder}/frontend"
+      },
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "Full stack: backend + frontend",
+      "dependsOn": [
+        "Backend: run server",
+        "Frontend: run dev server"
+      ],
+      "dependsOrder": "parallel",
       "problemMatcher": []
     }
   ]

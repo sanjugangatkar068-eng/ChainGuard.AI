@@ -1,13 +1,23 @@
 {
   "name": "ChainGuard AI",
   "image": "mcr.microsoft.com/devcontainers/python:3.12",
-  "postCreateCommand": "pip install -r backend/requirements-dev.txt",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "20"
+    }
+  },
+  "postCreateCommand": "pip install -r backend/requirements-dev.txt && cd frontend && npm install",
   "forwardPorts": [
-    8000
+    8000,
+    5173
   ],
   "portsAttributes": {
     "8000": {
       "label": "ChainGuard API",
+      "onAutoForward": "notify"
+    },
+    "5173": {
+      "label": "ChainGuard UI",
       "onAutoForward": "notify"
     }
   },
@@ -17,7 +27,8 @@
         "ms-python.python",
         "ms-python.vscode-pylance",
         "ms-python.debugpy",
-        "charliermarsh.ruff"
+        "charliermarsh.ruff",
+        "vitest.explorer"
       ]
     }
   }

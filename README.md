@@ -120,16 +120,18 @@ never breaks the request. Alerts are acknowledgement-tracked via `/api/alerts`.
 
 Open the repository folder in VS Code and you get, out of the box:
 
-- **Run & Debug** → *ChainGuard API (uvicorn)* launches the server on port 8000 with
-  the debugger attached; *Pytest (current file)* debugs a single test.
-- **Terminal → Run Task** → install dependencies, run the server, run tests, or seed
-  demo data.
-- **Testing** sidebar discovers the pytest suite automatically.
-- Recommended extensions (Python, Pylance, debugpy, Ruff) are suggested on open.
+- **Run & Debug** → *ChainGuard API (uvicorn)* launches the backend with the debugger
+  attached; *Frontend: Chrome* opens the UI with a browser debugger; *Pytest (current
+  file)* debugs a single test.
+- **Terminal → Run Task** → install/run/test for both backend and frontend, seed demo
+  data, or **Full stack: backend + frontend** to start both servers at once.
+- **Testing** sidebar discovers the pytest suite; the Vitest extension discovers the
+  frontend tests.
+- Recommended extensions (Python, Pylance, debugpy, Ruff, Vitest) are suggested on open.
 
 A **Dev Container** is included (`.devcontainer/`): open the folder with
-*Dev Containers: Reopen in Container* (or a GitHub Codespace) to get Python 3.12 with
-dependencies installed and port 8000 forwarded.
+*Dev Containers: Reopen in Container* (or a GitHub Codespace) to get Python 3.12 **and
+Node 20** with both dependency sets installed, and ports 8000 and 5173 forwarded.
 
 ## Demo data
 
@@ -147,12 +149,22 @@ pipeline (including the Supplier Risk agent) on each demo disruption.
 
 ## Tests
 
+Backend:
+
 ```bash
 cd backend
 pytest -q
 ```
 
-CI runs the same suite on every push and pull request (see `.github/workflows/ci.yml`).
+Frontend (Vitest + Testing Library):
+
+```bash
+cd frontend
+npm test          # single run
+npm run test:watch
+```
+
+CI runs both suites on every push and pull request (see `.github/workflows/ci.yml`).
 
 ## Docker
 

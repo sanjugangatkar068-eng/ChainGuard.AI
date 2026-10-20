@@ -2,7 +2,7 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "ChainGuard API (uvicorn)",
+      "name": "Backend: ChainGuard API (uvicorn)",
       "type": "debugpy",
       "request": "launch",
       "module": "uvicorn",
@@ -17,7 +17,7 @@
       "justMyCode": false
     },
     {
-      "name": "Pytest (current file)",
+      "name": "Backend: pytest (current file)",
       "type": "debugpy",
       "request": "launch",
       "module": "pytest",
@@ -28,6 +28,13 @@
       "cwd": "${workspaceFolder}/backend",
       "console": "integratedTerminal",
       "justMyCode": false
+    },
+    {
+      "name": "Frontend: Chrome",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}/frontend"
     }
   ]
 }
