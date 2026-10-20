@@ -1,0 +1,43 @@
+
+from typing import Literal, Optional
+from pydantic import BaseModel, Field
+
+
+class DisruptionRequest(BaseModel):
+    title: str = Field(min_length=3, max_length=160)
+
+    disruption_type: Literal[
+        "port_closure",
+        "weather",
+        "tariff_change",
+        "supplier_outage",
+        "port_congestion",
+        "demand_spike",
+        "other"
+    ]
+
+    location: str
+    severity: Literal["low", "medium", "high", "critical"] = "medium"
+    description: str = ""
+    affected_supplier: Optional[str] = None
+    delay_days: int = Field(default=5, ge=0, le=90)
+    tariff_percent: float = Field(default=0, ge=0, le=500)
+    estimated_loss_usd: float = Field(default=0, ge=0)
+
+
+class ScenarioRequest(BaseModel):
+    disruption_id: Optional[int] = None
+    demand_units_per_day: int = Field(default=20, ge=0)
+    current_inventory: int = Field(default=240, ge=0)
+    lead_time_days: int = Field(default=4, ge=0)
+    safety_stock: int = Field(default=40, ge=0)
+    unit_cost_usd: float = Field(default=25, ge=0)
+    expedite_cost_usd: float = Field(default=500, ge=0)
+    reroute_cost_usd: float = Field(default=1200, ge=0)
+    max_budget_usd: float = Field(default=10000, ge=0)
+
+
+class ApprovalDecision(BaseModel):
+    decision: Literal["approve", "reject"]
+    reviewer: str = Field(min_length=2)
+    comments: str = ""
