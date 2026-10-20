@@ -1,10 +1,14 @@
-# Build from the REPOSITORY ROOT — the folder that contains backend/ and frontend/.
+# The build context for this image is the backend/ directory — the folder this file
+# lives in — so every COPY path below is relative to backend/.
 #
-#   docker build -f backend/Dockerfile -t chainguard-ai .
-#   docker run -p 8000:8000 chainguard-ai
+#   docker build -t chainguard-ai backend/
+#   docker run -p 8000:8000 -e API_KEY=change-me chainguard-ai
 #
-# The build context MUST be the repo root: every COPY path below is relative to it.
-# Building from inside backend/ fails with:  "/backend": not found
+# On a platform with a "Root Directory" setting (e.g. Render), set it to `backend` and
+# the Dockerfile path to `Dockerfile` — the context then matches these paths.
+#
+# If you ever build with the REPOSITORY ROOT as the context instead, prefix each COPY
+# path with `backend/` or you will get:  failed to compute cache key: "/backend": not found
 FROM python:3.12-slim
 
 WORKDIR /app
@@ -12,10 +16,10 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
-COPY backend/requirements.txt .
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY backend/ .
+COPY . .
 
 EXPOSE 8000
 

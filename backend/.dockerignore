@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+
+# Local config and database — never bake these into an image.
+.env
+*.db
+*.sqlite
+*.sqlite3
+
+# Tests are not needed at runtime.
+tests/
+conftest.py

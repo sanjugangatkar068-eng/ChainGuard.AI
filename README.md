@@ -225,15 +225,16 @@ CI runs both suites on every push and pull request (see `.github/workflows/ci.ym
 
 ## Docker
 
-Run from the **repository root** — the build context must contain `backend/`:
+The image's build context is the **`backend/`** directory:
 
 ```bash
-docker build -f backend/Dockerfile -t chainguard-ai .
+docker build -t chainguard-ai backend/
 docker run -p 8000:8000 -e API_KEY=change-me chainguard-ai
 ```
 
-Building from inside `backend/` fails with `"/backend": not found`. The container
-honours `$PORT` if the platform sets one, otherwise it listens on 8000.
+On a host with a "Root Directory" setting (e.g. Render), set it to `backend` and the
+Dockerfile path to `Dockerfile`, so the context matches the COPY paths. The container
+honours `$PORT` if set, otherwise it listens on 8000.
 
 See [`docs/DEPLOY.md`](docs/DEPLOY.md) for step-by-step hosting instructions (backend,
 frontend and the environment variables each needs).
@@ -333,6 +334,7 @@ curl -X POST http://127.0.0.1:8000/api/approvals/1/decision \
     ├── requirements.txt
     ├── requirements-dev.txt
     ├── Dockerfile
+    ├── .dockerignore
     └── .env.example
 └── frontend
     ├── index.html

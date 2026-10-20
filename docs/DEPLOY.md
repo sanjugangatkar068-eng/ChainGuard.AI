@@ -11,25 +11,27 @@ frontend**. You can run them together locally, or host them separately.
 
 ## 1. Docker (local, quickest check)
 
-Run from the **repository root**, not from `backend/`:
+The build context is the **`backend/`** directory — the Dockerfile's COPY paths are
+relative to it:
 
 ```bash
-cd /path/to/ChainGuard.AI        # repo root
-docker build -f backend/Dockerfile -t chainguard-ai .
+docker build -t chainguard-ai backend/
 docker run -p 8000:8000 -e API_KEY=change-me chainguard-ai
 ```
 
 Then open <http://127.0.0.1:8000/docs>.
 
-**Why the context matters:** the Dockerfile starts with `COPY backend/requirements.txt .`,
-and COPY paths are relative to the build context. Building from inside `backend/` gives:
+**Why the context matters.** `COPY requirements.txt .` resolves inside the context, so
+if the context is the *repository root* instead of `backend/`, the build fails with:
 
 ```
 failed to compute cache key: "/backend": not found
 ```
 
-The context must be the repo root. In a cloud builder, set **Dockerfile Path =
-`backend/Dockerfile`** and **Docker Context = `.`**.
+Rule of thumb: **the context and the Dockerfile must agree.** Either
+context = `backend/` with the committed Dockerfile (recommended), or context = repo root
+with a Dockerfile whose paths are prefixed `backend/`. Mixing the two produces exactly
+the error above.
 
 ---
 
@@ -53,14 +55,15 @@ Environment variables:
 
 ## 3. Backend as a Docker service
 
-Same as above, but:
-
 | Setting | Value |
 | --- | --- |
-| Dockerfile path | `backend/Dockerfile` |
-| Docker context | `.` (repo root) |
+| Root directory | `backend` |
+| Dockerfile path | `Dockerfile` |
+| Docker context | the root directory (`backend`) |
 
-The image reads `$PORT` if the platform provides one, and otherwise listens on 8000.
+The Dockerfile's COPY paths are relative to `backend/`, so the context must be that
+folder — which is what setting Root Directory to `backend` gives you. The image reads
+`$PORT` if the platform provides one, and otherwise listens on 8000.
 
 ## 4. Frontend as a static site (e.g. Render Static Site, Netlify, Vercel, Pages)
 
@@ -109,7 +112,7 @@ Skipping step 3 is the most common cause of a blank UI with CORS errors in the c
 
 | Symptom | Cause / fix |
 | --- | --- |
-| `failed to compute cache key: "/backend": not found` | Build context is `backend/`. Use the repo root (see §1). |
+| `failed to compute cache key: "/backend": not found` | The context and Dockerfile disagree. Set Root Directory = `backend` (context `backend/`, Dockerfile `Dockerfile`), or use the repo root as context with Dockerfile `backend/Dockerfile`. |
 | `502` / `Connection refused` | The app isn't bound to `0.0.0.0` or isn't using `$PORT`. |
 | UI loads but every action fails | `CORS_ORIGINS` on the backend doesn't include the frontend origin. |
 | `401 Invalid or missing API key` | `API_KEY` is set on the backend but `VITE_API_KEY` isn't set on the frontend (or they differ). |
